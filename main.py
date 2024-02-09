@@ -30,29 +30,6 @@ def do_timestep(positions, velocities):
     return positions
 
 
-N = 20
-dt = 0.1
-positions = np.random.random((N, 2))
-velocities = np.random.random((N, 2))
-
-
-for i in range(0,10):
-    positions = do_timestep(positions)
-    box_length = 1
-    positions[positions > box_length] = positions[positions > box_length] - box_length
-    positions[positions < 0] = positions[positions < 0] + box_length
-    plt.plot(positions[])
-
-
-
-
-def euler_position(x, v, h):
-    "First order Euler approximation returns a position"
-    return x + v * h
-
-def euler_velocity(v, m, potential, h):
-    "First order Euler approximation note potential requires a function"
-    return v + 1/m * potential * h
 
 
 x = np.zeros()

@@ -21,10 +21,14 @@ dt = 0.1
 positions = np.random.random((N, 2))
 velocities = np.random.random((N, 2))
 
-
+i=0
 for i in range(0,10):
-    positions = do_timestep(positions)
+    positions = do_timestep(positions, velocities)
     box_length = 1
     positions[positions > box_length] = positions[positions > box_length] - box_length
     positions[positions < 0] = positions[positions < 0] + box_length
-    plt.plot(positions[])
+    plt.scatter(positions[:,0], positions[:,1])
+    plt.clf
+    plt.show()
+    
+    
