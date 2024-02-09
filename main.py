@@ -16,18 +16,19 @@ def lennard_jones(epsilon, sigma, r):
     return 4 * epsilon * ((sigma/r)**12 - (sigma/r)**6)
 
 
-def periodic_bcs(posititions, velocities):
-    """Apply periodic boundry conditions 
+def periodic_bcs(positions, velocities, box_length):
+    """Apply periodic boundry conditions by subtracting L in the  'violating' components
 
     Args:
         posititions (array): position array
         velocities (array): velocities array
     """
+    
+    positions[positions > box_length] = positions[positions > box_length] - box_length
+    positions[positions < 0] = positions[positions < 0] + box_length
 
-
-def do_timestep(positions, velocities):
-    positions = positions + velocities * dt
     return positions
+
 
 
 
