@@ -30,7 +30,7 @@ def potential(x1, x2, potential_function, epsilon, sigma):
     return potential_function(r, epsilon, sigma)
 
 def periodic_bcs(positions, velocities, box_length):
-    """Apply periodic boundry conditions by subtracting L in the  'violating' components
+    """Apply periodic boundry conditions by subtracting L ONCE in the  'violating' components
 
     Args:
         posititions (array): position array
