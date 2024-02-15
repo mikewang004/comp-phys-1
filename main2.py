@@ -7,14 +7,14 @@ import scipy.constants as spc
 e_kb = 119.8 #K
 epsilon = e_kb * sp.constants.Boltzmann
 sigma = 3.405 #A
-h = 0.001 #timestep 
-N = 10 #number of particles
-dim = 2 #number of spacelike dimensions
+h = 0.01 #timestep 
+N = 6 #number of particles
+dim = 3 #number of spacelike dimensions
 box_length = 10
 m = 6.6 * 10**-26
 natural_constant =  (m *sigma**2) / epsilon
 v_start = sigma / np.sqrt(natural_constant)
-max_time = 1000
+max_time = 200
 
 
 seed = 100
@@ -64,22 +64,28 @@ def euler_velocity(v, potential, h):
     return v + potential * h
 
 
-def time_step(x, v, h, potential=potential_natural):
+def time_step(x, v, h, potential=potential_natural, L = box_length):
     #First look for smallest distances within each array to apply potential to then update whole diagram
     r_distances = sp.spatial.distance.cdist(x_0, x_0)
     r_distances[r_distances == 0] = np.nan
     r_min = (np.nanmin(r_distances, axis=0, keepdims=False)) #transpose possibly unnecessary 
     #Apply potential 
     pot_x = potential(x, r_min)
+    #pot_x = x
     v = euler_velocity(v, pot_x, h)
     x = euler_position(x, v, h)
+    x = periodic_bcs(x, v, L)
     return x, v
 
 def time_loop(x_0, v_0, h, max_time, potential = potential_natural):
     x = x_0; v = v_0
+    #Initialise positions-of-all-time array 
+    x_all = np.zeros([x_0.shape[0], x_0.shape[1], max_time])
+    x_all[:, :, 0] = x_0
     for i in range(0, max_time):
         x, v = time_step(x, v, h, potential)
-    return x, v
+        x_all[:, :, i] = x
+    return x, v, x_all
 
 
 #Define starting conditions 
@@ -88,9 +94,17 @@ x_0 = rng.uniform(low = -box_length, high = box_length, size = (N, dim))
 v_0 = rng.uniform(low = -3, high = 3, size = (N, dim))
 
 #time_step(x_0, v_0, h)
-x, v = time_loop(x_0, v_0, h, max_time)
+x, v, x_all = time_loop(x_0, v_0, h, max_time)
 print(x_0)
 print(x)
 
 
 
+#Test plotting one particle 
+
+print(x - x_0)
+
+for j in range(0, N):
+    plt.scatter(x_all[j, 0, :], x_all[j, 1, :], marker=".")
+
+plt.show()
