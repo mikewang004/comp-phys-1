@@ -14,6 +14,10 @@ box_length = 10
 m = 6.6 * 10**-26
 natural_constant =  (m *sigma**2) / epsilon
 v_start = sigma / np.sqrt(natural_constant)
+max_time = 1000
+
+
+seed = 100
 
 #Note nabla U = 4 * epsilon (( -12 * sigma**12 * r**(-13)) - 6*sigma**6 * r**(-7))
 
@@ -24,18 +28,18 @@ def lennard_jones_natural(r, epsilon, sigma):
     return 4 * epsilon * ((r_sigma)**-12 - (r_sigma)**-6)
 
 def nabla_lennard_jones_natural(r_natural):
-    return 4*(-12 * r_natural**-13 + 6 * r_natural**-7)
+    return 4*(-12 * r_natural**-13.0 + 6 * r_natural**-7.0)
 
 
-def potential(x1, x2, potential_function, epsilon, sigma):
+def potential(x, r, potential_function, epsilon, sigma):
     """Assuming distance-only potential given by dU/dr * x_vector / r. Note potential here assumed to be 
     dU/dr i.e. nabla is assumed to be already applied to the potential."""
-    r = np.linalg.norm(x1 - x2)
-    return potential_function(r, epsilon, sigma)
+    return potential_function(r, epsilon, sigma) * (x / r)
 
-def potential_natural(x1, x2, potential_function):
-    r_natural = np.linalg.norm(x1 - x2)
-    return potential_function(r_natural)
+def potential_natural(x, r, potential_function = nabla_lennard_jones_natural):
+    r_repeat = np.transpose(np.tile(r, (dim, 1)))
+    x_r = x / r_repeat
+    return potential_function(r_repeat) * x_r
 
 def periodic_bcs(positions, velocities, box_length):
     """Apply periodic boundry conditions by subtracting L in the  'violating' components
@@ -54,21 +58,39 @@ def euler_position(x, v, h):
     "First order Euler approximation returns a position"
     return x + v * h
 
-def euler_velocity(v, m, potential, h):
+def euler_velocity(v, potential, h):
     "First order Euler approximation note potential requires a function"
+    #TODO double check if velocity truely unitless 
     return v + potential * h
 
 
-def time_loop(x, v, h, max_time = 100, potential=potential_natural):
+def time_step(x, v, h, potential=potential_natural):
     #First look for smallest distances within each array to apply potential to then update whole diagram
-    r = np.linalg.norm(x)
+    r_distances = sp.spatial.distance.cdist(x_0, x_0)
+    r_distances[r_distances == 0] = np.nan
+    r_min = (np.nanmin(r_distances, axis=0, keepdims=False)) #transpose possibly unnecessary 
+    #Apply potential 
+    pot_x = potential(x, r_min)
+    v = euler_velocity(v, pot_x, h)
+    x = euler_position(x, v, h)
+    return x, v
 
+def time_loop(x_0, v_0, h, max_time, potential = potential_natural):
+    x = x_0; v = v_0
+    for i in range(0, max_time):
+        x, v = time_step(x, v, h, potential)
+    return x, v
 
 
 #Define starting conditions 
-rng = np.random.default_rng()
+rng = np.random.default_rng(seed=seed)
 x_0 = rng.uniform(low = -box_length, high = box_length, size = (N, dim))
 v_0 = rng.uniform(low = -3, high = 3, size = (N, dim))
 
-print(sp.spatial.distance.cdist(x_0, x_0))
+#time_step(x_0, v_0, h)
+x, v = time_loop(x_0, v_0, h, max_time)
 print(x_0)
+print(x)
+
+
+
