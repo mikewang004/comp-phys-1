@@ -77,6 +77,9 @@ def time_step(x, v, h, potential=potential_natural, L = box_length):
     x = periodic_bcs(x, v, L)
     return x, v
 
+def test():
+    pass
+
 def time_loop(x_0, v_0, h, max_time, potential = potential_natural):
     x = x_0; v = v_0
     #Initialise positions-of-all-time array 
