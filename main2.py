@@ -61,12 +61,14 @@ def euler_velocity(v, m, potential, h):
 
 def time_loop(x, v, h, max_time = 100, potential=potential_natural):
     #First look for smallest distances within each array to apply potential to then update whole diagram
+    r = np.linalg.norm(x)
 
 
 
-#Define starting conditions
+#Define starting conditions 
 rng = np.random.default_rng()
 x_0 = rng.uniform(low = -box_length, high = box_length, size = (N, dim))
 v_0 = rng.uniform(low = -3, high = 3, size = (N, dim))
 
-print(v_0)
+print(sp.spatial.distance.cdist(x_0, x_0))
+print(x_0)
