@@ -22,24 +22,22 @@ seed = 100
 #Note nabla U = 4 * epsilon (( -12 * sigma**12 * r**(-13)) - 6*sigma**6 * r**(-7))
 
 
-def lennard_jones_natural(r, epsilon, sigma):
-    "Returns Lennard-Jones potential as given. r is distance between atoms."
-    r_sigma = r/sigma
-    return 4 * epsilon * ((r_sigma)**-12 - (r_sigma)**-6)
+def lennard_jones_natural(r_natural):
+    "Returns Lennard-Jones potential as given. r_natural is the distance in rescaled (natural) units"
+    return 4 * epsilon * ((r_natural)**-12 - (r_natural)**-6)
 
 def nabla_lennard_jones_natural(r_natural):
-    return 4*(-12 * r_natural**-13.0 + 6 * r_natural**-7.0)
+    return 4*(-12 * r_natural**-12.0 + 6 * r_natural**-7.0)
 
 
-def potential(x, r, potential_function, epsilon, sigma):
+def potential(x, r, potential_function, ):
     """Assuming distance-only potential given by dU/dr * x_vector / r. Note potential here assumed to be 
     dU/dr i.e. nabla is assumed to be already applied to the potential."""
     return potential_function(r, epsilon, sigma) * (x / r)
 
-def potential_natural(x, r, potential_function = nabla_lennard_jones_natural):
+def force_natural(x, r, potential_function = nabla_lennard_jones_natural):
     r_repeat = np.transpose(np.tile(r, (dim, 1)))
-    x_r = x / r_repeat
-    return potential_function(r_repeat) * x_r
+    return potential_function(r_repeat) 
 
 def periodic_bcs(positions, velocities, box_length):
     """Apply periodic boundry conditions by subtracting L in the  'violating' components
@@ -64,7 +62,7 @@ def euler_velocity(v, potential, h):
     return v + potential * h
 
 
-def time_step(x, v, h, potential=potential_natural, L = box_length):
+def time_step(x, v, h, potential=force_natural, L = box_length):
     #First look for smallest distances within each array to apply potential to then update whole diagram
     r_distances = sp.spatial.distance.cdist(x_0, x_0)
     r_distances[r_distances == 0] = np.nan
@@ -80,7 +78,7 @@ def time_step(x, v, h, potential=potential_natural, L = box_length):
 def test():
     pass
 
-def time_loop(x_0, v_0, h, max_time, potential = potential_natural):
+def time_loop(x_0, v_0, h, max_time, potential = force_natural):
     x = x_0; v = v_0
     #Initialise positions-of-all-time array 
     x_all = np.zeros([x_0.shape[0], x_0.shape[1], max_time])
