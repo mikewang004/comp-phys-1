@@ -5,19 +5,20 @@ import scipy.constants as spc
 #Define constants
 
 e_kb = 119.8 #K
-epsilon = e_kb * sp.constants.Boltzmann
-sigma = 3.405 #A
+#epsilon = e_kb * sp.constants.Boltzmann
+#sigma = 3.405 #A
+epsilon = 1; sigma = 1;
 h = 0.01 #timestep 
 N = 6 #number of particles
 dim = 3 #number of spacelike dimensions
-box_length = 10
+box_length = 20 #m
 m = 6.6 * 10**-26
 natural_constant =  (m *sigma**2) / epsilon
 v_start = sigma / np.sqrt(natural_constant)
-max_time = 200
+max_time = 100
 
 
-seed = 100
+test_seed = 100
 
 #Note nabla U = 4 * epsilon (( -12 * sigma**12 * r**(-13)) - 6*sigma**6 * r**(-7))
 
@@ -81,17 +82,18 @@ def test():
 def time_loop(x_0, v_0, h, max_time, potential = force_natural):
     x = x_0; v = v_0
     #Initialise positions-of-all-time array 
-    x_all = np.zeros([x_0.shape[0], x_0.shape[1], max_time])
+    x_all = np.zeros([x_0.shape[0], x_0.shape[1], int(max_time/h)])
     x_all[:, :, 0] = x_0
-    for i in range(0, max_time):
+    for i in range(0, int(max_time/h)):
         x, v = time_step(x, v, h, potential)
         x_all[:, :, i] = x
     return x, v, x_all
 
 
-#Define starting conditions 
-rng = np.random.default_rng(seed=seed)
-x_0 = rng.uniform(low = -box_length, high = box_length, size = (N, dim))
+
+
+rng = np.random.default_rng()
+x_0 = rng.uniform(low = -10, high = 10, size = (N, dim))
 v_0 = rng.uniform(low = -3, high = 3, size = (N, dim))
 
 #time_step(x_0, v_0, h)
@@ -107,5 +109,6 @@ print(x - x_0)
 
 for j in range(0, N):
     plt.scatter(x_all[j, 0, :], x_all[j, 1, :], marker=".")
+
 
 plt.show()
