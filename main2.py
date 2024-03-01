@@ -89,13 +89,8 @@ def time_loop(x_0, v_0, h, max_time, potential = force_natural):
     #Initialise positions-of-all-time array 
     x_all = np.zeros([x_0.shape[0], x_0.shape[1], int(max_time/h)])
     x_all[:, :, 0] = x_0
-<<<<<<< HEAD
-    for i in range(0, int(max_time/h)):
-        x, v = time_step(x, v, h, potential)
-=======
     for i in range(0, max_time):
         x, v, energy = time_step(x, v, h, potential)
->>>>>>> natural-units-update1
         x_all[:, :, i] = x
     return x, v, x_all
 
