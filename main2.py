@@ -62,6 +62,13 @@ def euler_velocity(v, potential, h):
     #TODO double check if velocity truely unitless 
     return v + potential * h
 
+def verlet_position(x, v, m, potential, h):
+    #TODO nog potentieel verwerken 
+    return x + h * v + h*h/(2*m) * potential
+
+def verlet_velocity(x_next, v, m, potential, h):
+    return v + h/(2*m) * potential
+
 
 def time_step(x, v, h, potential=force_natural, L = box_length):
     #First look for smallest distances within each array to apply potential to then update whole diagram
