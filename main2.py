@@ -23,21 +23,20 @@ test_seed = 100
 #Note nabla U = 4 * epsilon (( -12 * sigma**12 * r**(-13)) - 6*sigma**6 * r**(-7))
 
 
-def lennard_jones_natural(r_natural):
+def lennard_jones_natural(dists_nat):
     "Returns Lennard-Jones potential as given. r_natural is the distance in rescaled (natural) units"
-    return 4 * epsilon * ((r_natural)**-12 - (r_natural)**-6)
+    return 4 * epsilon * ((dists_nat)**-12 - (dists_nat)**-6)
 
 def nabla_lennard_jones_natural(r_natural):
     return 4*(-12 * r_natural**-12.0 + 6 * r_natural**-7.0)
 
-
-def potential(x, r, potential_function, ):
+def potential(x, dists_nat, potential_function, ):
     """Assuming distance-only potential given by dU/dr * x_vector / r. Note potential here assumed to be 
     dU/dr i.e. nabla is assumed to be already applied to the potential."""
-    return potential_function(r, epsilon, sigma) * (x / r)
+    return potential_function(dists_nat, epsilon, sigma) * (x / dists_nat)
 
-def force_natural(x, r, potential_function = nabla_lennard_jones_natural):
-    r_repeat = np.transpose(np.tile(r, (dim, 1)))
+def force_natural(x, dists_nat, potential_function = nabla_lennard_jones_natural):
+    r_repeat = np.transpose(np.tile(dists_nat, (dim, 1)))
     return potential_function(r_repeat) 
 
 def periodic_bcs(positions, velocities, box_length):
@@ -65,8 +64,9 @@ def verlet_velocity(x_next, v, m, potential, h):
     return v + h/(2*m) * potential
 
     
-def energy(x,v_natural, potential=potential,):
-    return np.sum(1/2 * epsilon * v_natural**2) + np.sum(potential(x))
+def energy(dists_nat,v_natural, potential=potential,):
+    print('dists', np.shape(dists_nat), np.shape(v_natural))
+    return np.sum(1/2 * epsilon * v_natural**2, axis=0) + np.sum(lennard_jones_natural(dists_nat), axis=0)
 
 def euler_velocity(v, potential, h):
     "First order Euler approximation note potential requires a function"
@@ -85,7 +85,7 @@ def time_step(x, v, h, potential=force_natural, L = box_length):
     v = euler_velocity(v, pot_x, h)
     x = euler_position(x, v, h)
     x = periodic_bcs(x, v, L)
-    system_energy = energy(x,v)
+    system_energy = energy(r_distances,v)
     return x, v, system_energy 
 
 def test():
@@ -111,6 +111,10 @@ v_0 = rng.uniform(low = -3, high = 3, size = (N, dim))
 #time_step(x_0, v_0, h)
 x, v, x_all = time_loop(x_0, v_0, h, max_time)
 print(x_0)
+energy_over_time = x_all[:,-1]
+plt.figure()
+plt.plot(energy_over_time)
+plt.show()
 print('energy', x_all[:,-1])
 
 
