@@ -64,10 +64,9 @@ def verlet_position(x, v, m, potential, h):
 def verlet_velocity(x_next, v, m, potential, h):
     return v + h/(2*m) * potential
 
-
     
 def energy(x,v_natural, potential=potential,):
-    return np.sum(1/2 * epsilon * v_natural**2)
+    return np.sum(1/2 * epsilon * v_natural**2) + np.sum(potential(x))
 
 def euler_velocity(v, potential, h):
     "First order Euler approximation note potential requires a function"
