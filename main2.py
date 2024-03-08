@@ -85,7 +85,7 @@ def time_step(x, v, h, potential=force_natural, L = box_length):
     v = euler_velocity(v, pot_x, h)
     x = euler_position(x, v, h)
     x = periodic_bcs(x, v, L)
-    system_energy = energy(r_distances,v)
+    system_energy = energy(r_min,v)
     return x, v, system_energy 
 
 def test():
