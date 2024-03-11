@@ -47,7 +47,7 @@ def forces(particle_positions, particle_distances_arr):
     norm_diff_matrix[:,:,:] = norm_diff_matrix[:,:,:] * diff_matrix_inv_norm
 
     # forces = 4*(-12 * particle_distances_arr**-12.0 + 6 * particle_distances_arr**-7.0) 
-    return 
+    return 0;
 
 def zero_forces(particle_positions, particle_distances_arr):
     net_force = 0.0 * particle_positions
