@@ -23,13 +23,29 @@ def lennard_jones_natural(dists_nat):
 
 def forces(particle_positions, particle_distances_arr):
     # still not fully complete
-    dimensions = np.shape(particle_positions)[1]
-    unit_diff_vectors = np.zeros((np.shape(particle_positions)[0],np.shape(particle_positions)[1], dimensions))
+    dimensions = np.shape(particle_positions)[1] # number of columns in the positions array corresponds to the dimension
+    N_particles = np.shape(particle_positions)[0]
+    diff_matrix = np.zeros((N_particles,N_particles, dimensions))
 
     for dim in range(0, dimensions): 
-        dists_along_axis = sp.spatial.distance.cdist(particle_positions[dim], particle_positions[dim])
-        unit_diff_vectors[:,:,dim] = dists_along_axis
-    return 4*(-12 * particle_distances_arr**-12.0 + 6 * particle_distances_arr**-7.0)
+        # dists_along_axis = sp.spatial.distance_matrix(particle_positions[:,dim], particle_positions[:,dim])
+        print(f'{np.tile(particle_positions[:,0], (N_particles, 1))=}')
+        dists_along_axis  = np.tile(particle_positions[:,0], (N_particles, 1)) - np.tile(particle_positions[:,0], (N_particles, 1)).T
+        diff_matrix[:,:,dim] = dists_along_axis # arr of size N x N
+        print(f'{dists_along_axis=}')
+    
+    print(f'{diff_matrix=}')
+    diff_matrix_inv_norm  = np.zeros((N_particles, N_particles))
+    diff_matrix_inv_norm[:,:] = 1/np.sqrt((np.sum(diff_matrix[:,:]**2))) # sum the squares of elements across all dimensions
+    # print(f'{np.shape(diff_matrix_magnitude)=}')
+    norm_diff_matrix = diff_matrix.copy()
+    norm_diff_matrix[:,:,:] = norm_diff_matrix[:,:,:] * diff_matrix_inv_norm
+        # the diff_matrix contains all possible combinations of 
+
+        # unit_diff_vectors = diff_matrix * np.sum(diff_matrix**2, axis=1) # WRONG  must be row-wise multiplication to normalize all rows (=vectors)
+
+    # forces = 4*(-12 * particle_distances_arr**-12.0 + 6 * particle_distances_arr**-7.0) 
+    return 
 
 def zero_forces(particle_positions, particle_distances_arr):
     net_force = 0.0 * particle_positions
