@@ -56,13 +56,17 @@ def euler_position(x, v, h):
     "First order Euler approximation returns a position"
     return x + v * h
     
-def verlet_position(x, v, m, potential, h):
+def verlet_position(x, v, m, force_natural, h):
     #TODO nog potentieel verwerken 
-    return x + h * v + h*h/(2*m) * potential
+    return x + h * v + h*h/(2*m) * force_natural
 
-def verlet_velocity(x_next, v, m, potential, h):
-    return v + h/(2*m) * potential
+def verlet_velocity(x_next, v, m, force_natural_new, force_natural, h):
+    return v + h/(2*m) * (force_natural_new + force_natural)
 
+def verlet_algorithm(x, v, m, force_natural = force_natural, h= h):
+    """Runs one timestep of the Verlet algorithm."""
+    x_new = verlet_position(x, v, m, force_natural, h)
+    force_new = force_natural
     
 def energy(dists_nat,v_natural, potential=potential,):
     print('dists', np.shape(dists_nat), np.shape(v_natural))
