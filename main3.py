@@ -28,6 +28,7 @@ def forces(particle_positions, particle_distances_arr):
         particle_positions (arr): positions in N-d for the particles
         particle_distances_arr (arr): N x N array
     """
+    #TODO apply actual forces to normalised array and return non-normalised array 
     # still not fully complete
     dimensions = np.shape(particle_positions)[1] # number of columns in the positions array corresponds to the dimension
     N_particles = np.shape(particle_positions)[0]
@@ -44,7 +45,9 @@ def forces(particle_positions, particle_distances_arr):
 
     # do the normalization    
     norm_diff_matrix = diff_matrix.copy()
-    norm_diff_matrix[:,:,:] = norm_diff_matrix[:,:,:] * diff_matrix_inv_norm
+    #print(diff_matrix_inv_norm[:, :, np.newaxis].shape)
+    #print(norm_diff_matrix.shape)
+    norm_diff_matrix[:,:,:] = norm_diff_matrix[:,:,:] * (diff_matrix_inv_norm[:, :, np.newaxis])
 
     # forces = 4*(-12 * particle_distances_arr**-12.0 + 6 * particle_distances_arr**-7.0) 
     return 0;
@@ -92,9 +95,10 @@ def time_step(positions, velocities, h, L):
 
     #First look for smallest distances within each array to apply potential to then update whole diagram
     particle_distances = sp.spatial.distance.cdist(positions, positions)
-    particle_forces = zero_forces(positions, particle_distances)
-    print(f'{np.shape(positions)=}')
-    print(f'{np.shape(particle_forces)=}')
+    #particle_forces = zero_forces(positions, particle_distances)
+    particle_forces = forces(positions, particle_distances)
+    #print(f'{np.shape(positions)=}')
+    #print(f'{np.shape(particle_forces)=}')
 
     positions_new = euler_position(positions, velocities, h)
     velocities_new = euler_velocity(velocities, h, particle_forces)
@@ -106,6 +110,7 @@ def time_step(positions, velocities, h, L):
 
 
 def time_loop(initial_positions, initial_velocities, h, max_time, L):
+    "Excutes simulation for a duration max_time in amount of steps h."
     N_particles = np.shape(initial_positions)[0]
     N_timesteps = int(max_time/h)
     N_dimensions = np.shape(initial_positions)[1]
@@ -126,16 +131,21 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
 
 
-h=0.005
-N = 10
+h=0.01
+N = 2
 dim=2
-max_time =2
-L = 2
+max_time =100
+L = 20
 
 rng = np.random.default_rng()
-x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-v_0 = rng.uniform(low = -1, high = 1, size = (N, dim))
+#x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+#v_0 = rng.uniform(low = -1, high = 1, size = (N, dim))
 
+
+
+x_0 = np.array([[0.3 * L, 0.5 * L], [0.7 * L, 0.49 * L]])
+v_0 = np.array([[0.09, 0], [-0.09, 0]])
+print(x_0.shape)
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
 print(np.shape(loop_results_x))
