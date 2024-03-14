@@ -74,9 +74,12 @@ def periodic_bcs(positions, box_length):
         velocities (array): velocities array
     """
     
-    positions[positions > box_length/2] = ((positions[positions > box_length/2]  - box_length/2)% box_length)  + box_length/2
-    positions[positions < -box_length/2] = ((positions[positions < -box_length/2] + box_length/2) % box_length)  - box_length/2
+    #positions[positions > box_length/2] = ((positions[positions > box_length/2]  - box_length/2)% box_length)  + box_length/2
+    #positions[positions < -box_length/2] = ((positions[positions < -box_length/2] + box_length/2) % box_length)  - box_length/2
 
+
+    positions[positions > box_length] = positions[positions > box_length] - box_length
+    positions[positions < -box_length] = positions[positions < -box_length] + box_length
     return positions
 
     
@@ -137,16 +140,19 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
 
 h=0.01
-N = 10
+N = 2
 dim=2
-max_time =20 * h
-L = 2
+max_time = 100
+L = 20
 v_max= 0.001
 
 
 rng = np.random.default_rng()
-x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+#x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+#v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+
+x_0 = np.array([[0.3 * L, 0.51 * L], [0.7 * L, 0.49 * L]])
+v_0 = np.array([[0.09, 0], [-0.09, 0]])
 
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
@@ -154,6 +160,9 @@ loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 # n-steps, n-particle, dimension
 for i in range(0,N):
     plt.plot(loop_results_x[:,i,0], loop_results_x[:,i,1], marker='x')
+
+plt.xlim(0, 20)
+plt.ylim(0, 20)
 plt.show()
 
 
