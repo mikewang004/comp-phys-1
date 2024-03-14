@@ -158,10 +158,12 @@ N = 20
 dim=2
 max_time =5 * h
 L = 2
+v_max= 0.001
+
 
 rng = np.random.default_rng()
 x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-v_0 = rng.uniform(low = -1, high = 1, size = (N, dim))
+v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
