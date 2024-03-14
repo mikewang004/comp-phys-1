@@ -28,51 +28,36 @@ def forces(particle_positions, particle_distances_arr):
         particle_positions (arr): positions in N-d for the particles
         particle_distances_arr (arr): N x N array
     """
-    # still not fully complete
     dimensions = np.shape(particle_positions)[1] # number of columns in the positions array corresponds to the dimension
     N_particles = np.shape(particle_positions)[0]
-    diff_matrix = np.zeros((N_particles,N_particles, dimensions)) # the diff_matrix contains all possible combinations of vectors between a set of two particles
+    # the diff_matrix contains all possible combinations of vectors between a set of two particles
+    diff_matrix = np.zeros((N_particles,N_particles, dimensions)) 
 
     # calculate diff matrix across all dimensions
     for dim in range(0, dimensions): 
         dists_along_axis   = sp.spatial.distance.cdist(particle_positions[:,dim, np.newaxis], particle_positions[:,dim, np.newaxis])
         diff_matrix[:,:,dim] = dists_along_axis # arr of size N x N
-        print(f'{particle_positions[:,0]=}')
     
-    print(f'{diff_matrix=}')
-
     # make a matrix to store the inverted norm of all diff vectors so we can normalize them
     diff_matrix_inv_norm  = np.zeros((N_particles, N_particles))
     diff_matrix_inv_norm[:,:] = 1/np.sqrt((np.sum(diff_matrix[:,:]**2, axis=2))) # sum the squares of elements across all dimensions
-
-    print(1/np.sqrt((np.sum(diff_matrix[:,:]**2, axis=2))) == 1/np.sqrt((np.sum(diff_matrix**2, axis=2))))
 
     # do the normalization    
     norm_diff_matrix = diff_matrix.copy()
     norm_diff_matrix[:,:,:] = norm_diff_matrix[:,:,:] * (np.repeat(diff_matrix_inv_norm[:, :, np.newaxis], dimensions, axis=2))
     norm_diff_matrix[np.isnan(norm_diff_matrix)] = 0
 
-    print(f'{np.shape(norm_diff_matrix)=}')
-    print(f'{norm_diff_matrix=}')
-    # check if indeed normalized
-    # test_norm_diff = np.zeros((N_particles, N_particles))
-    # test_norm_diff[:,:] = 1/np.sqrt((np.sum(norm_diff_matrix[:,:]**2, axis=2))) # sum the squares of elements across all dimensions
-
-    # print(f'{test_norm_diff=}')
-  
-    # assuming an ordering but probably could be more general
+    # assuming particle_distances_arr has identical ordering but probably could be more general
     forces_magnitudes = np.zeros((np.shape(particle_distances_arr)))
     forces_magnitudes[:,:] = 4*(-12 * particle_distances_arr[:,:]**-12.0 + 6 * particle_distances_arr[:,:]**-7.0) 
 
-    print(f'{np.shape(forces_magnitudes )}')    
-    # print(f'{forces_magnitudes }')    
-    
     net_force = np.zeros((N_particles, dimensions))
     repeated_force_magnitudes = np.repeat(forces_magnitudes[:,:, np.newaxis], dimensions, axis=2)
-    # net_force[:,:] = np.sum(norm_diff_matrix[:, :, :] *    repeated_force_magnitudes[:,:,:], axis=1)
-    #bullshit test
-    net_force[:,:] = (norm_diff_matrix[:, 0, :] *    repeated_force_magnitudes[:,0,:] + norm_diff_matrix[:, 1, :] *    repeated_force_magnitudes[:,1,:])
-    print(f'{net_force=}')
+
+    for j in range(0,dimensions):
+        net_force += (norm_diff_matrix[:, j, :] * repeated_force_magnitudes[:,j,:]) 
+
+    # safeguard in case things go crazy
     net_force[np.isnan(net_force)] = 0
     return net_force
 
@@ -89,8 +74,8 @@ def periodic_bcs(positions, box_length):
         velocities (array): velocities array
     """
     
-    positions[positions > box_length/2] = positions[positions > box_length/2] - box_length
-    positions[positions < -box_length/2] = positions[positions < -box_length/2] + box_length
+    positions[positions > box_length/2] = ((positions[positions > box_length/2]  - box_length/2)% box_length)  + box_length/2
+    positions[positions < -box_length/2] = ((positions[positions < -box_length/2] + box_length/2) % box_length)  - box_length/2
 
     return positions
 
@@ -120,8 +105,6 @@ def time_step(positions, velocities, h, L):
     #First look for smallest distances within each array to apply potential to then update whole diagram
     particle_distances = sp.spatial.distance.cdist(positions, positions)
     particle_forces = forces(positions, particle_distances)
-    print(f'{np.shape(positions)=}')
-    print(f'{np.shape(particle_forces)=}')
 
     positions_new = euler_position(positions, velocities, h)
     velocities_new = euler_velocity(velocities, h, particle_forces)
@@ -153,10 +136,10 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
 
 
-h=0.0001
-N = 20
+h=0.01
+N = 10
 dim=2
-max_time =5 * h
+max_time =20 * h
 L = 2
 v_max= 0.001
 
@@ -167,12 +150,14 @@ v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
-print((loop_results_x))
-plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
+
+# n-steps, n-particle, dimension
+for i in range(0,N):
+    plt.plot(loop_results_x[:,i,0], loop_results_x[:,i,1], marker='x')
 plt.show()
 
 
+print(f'{np.shape(loop_results_x)}')
+# print(loop_results_x)
 
 
-#time_step(x_0, v_0, h)
-# x, v, x_all = time_loop(x_0, v_0, h, max_time)
