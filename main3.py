@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sp
 import scipy.constants as spc
-
+import matplotlib.animation as animation
 # Define constants
 
 
@@ -224,8 +224,35 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     return results_positions, results_velocities
 
 
+def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing_frames=1):
+    fig, ax = plt.subplots()
+    ax.set_xlim([-view_size ,view_size ])
+    ax.set_ylim([-view_size ,view_size ])
 
-h=0.01
+    n_particles = np.shape(input_x)[1]
+    n_frames = np.shape(input_x)[0] + 1
+    lines = []
+
+    # set up first frame for plotting and construct all lines
+    for i in range(0,n_particles):
+        frame = 0 
+        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='--', )
+        lines.append(plotline[0])
+
+
+    def update(frame):
+        for i in range(0,len(lines)):
+            line = (lines[i])
+            trailing_frame = max(0, frame - trailing_frames)
+            line.set_xdata(input_x[trailing_frame:frame, i],)
+            line.set_ydata(input_y[trailing_frame :frame, i]) 
+        return (lines)
+
+    ani = animation.FuncAnimation(fig=fig, func=update, frames=n_frames,  interval=frame_interval, repeat=True, cache_frame_data=False)
+    plt.show()
+
+
+h=0.05
 N = 2
 dim = 2
 max_time = 200
@@ -241,7 +268,7 @@ rng = np.random.default_rng()
 #x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
 #v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
-x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
+x_0 = np.array([[0.51 * L - L/2, 0.4 * L -  L/2], [0.49 * L -  L/2, 0.3 * L -  L/2]])
 v_0 = np.array([[0.09, 0], [-0.09, 0]])
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
@@ -249,57 +276,6 @@ n_particles = np.shape(x_0)[0]
 # n-steps, n-particle, dimension
 plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 
-# plt.xlim(0, 20)
-# plt.ylim(0, 20)
-# plt.# show()
-# # plt.xlim(0, 20)
-# # plt.ylim(0, 20)
-# # plt.# show()
-# plt.show()
-
-# print(f'{np.shape(loop_results_x)}')
-# print(loop_results_x)
 
 
-
-""" 
-hieronder de animatie meuk
-
-"""
-
-
-
-import matplotlib.animation as animation
-
-
-fig, ax = plt.subplots()
-
-ax.set_xlim([-L,L])
-ax.set_ylim([-L,L])
-
-scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
-#plt.show()
-
-
-# ax.legend()
-
-
-def update(frame):
-    # for each frame, update the data stored on each artist.
-    multiplier = 1000
-    frames_in_view = 500
-    colors = ['red', 'blue', 'yellow', 'pink', 'green']
-    number_of_colors = len(colors)
-
-    for i in range(0,n_particles):
-        bottom_line = ax.plot(loop_results_x[:,i,0], loop_results_x[:,i,1], marker='o', linestyle='none', c=colors[i%number_of_colors])[0]
-        bottom_line.set_xdata(loop_results_x[:,i,0][multiplier*frame - frames_in_view:multiplier*frame])
-        bottom_line.set_ydata(loop_results_x[:,i,1][multiplier*frame - frames_in_view:multiplier*frame])
-
-    return (scat, bottom_line)
-
-
-# n_frames = np.shape(time_arr)[0]
-# n_frames = 10
-ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
-plt.show()
+animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=L)
