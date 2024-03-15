@@ -176,15 +176,18 @@ class verlet():
         
     def get_kinetic_energy(self):
         """Returns kinetic energy T = 1/2mv**2"""
-        v_norm = np.linalg.norm(self.v, axis=0)
+        v_norm = np.linalg.norm(self.v, axis=1)
+        #print(v_norm)
         self.kinetic_energy = 0.5 * self.m * v_norm**2
         return self.kinetic_energy
 
     def get_potential_energy(self):
         """Returns potential energy (Lennard-Jones potential)"""
+        #TODO investigate why energy appears to be constant
         particle_distances = sp.spatial.distance.cdist(self.x, self.x)
-        potential_energy = lennard_jones_natural(particle_distances)
-        return potential_energy[:, 0] #only one column is needed i think
+        potential_energy_square_array = lennard_jones_natural(particle_distances)
+        potential_energy = potential_energy_square_array[~np.isnan(potential_energy_square_array)]
+        return np.sum(potential_energy, axis=0) #only one column is needed i think
 
 def time_step(positions, velocities, h, L):
 
@@ -240,7 +243,9 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
 
-    print(np.sum(results_energies, axis=2))
+    #print(np.sum(results_energies, axis=2))
+    print(results_energies[..., 0])
+    print(results_velocities[:, :, 0])
     return results_positions, results_velocities, results_energies
 
 
@@ -262,7 +267,7 @@ rng = np.random.default_rng()
 #v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
 x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
-v_0 = np.array([[0.09, 0], [-0.09, 0]])
+v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
 loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
@@ -321,5 +326,5 @@ def update(frame):
 
 # n_frames = np.shape(time_arr)[0]
 # n_frames = 10
-#ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
-#plt.show()
+ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
+plt.show()
