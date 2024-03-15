@@ -102,7 +102,7 @@ def time_step(positions, velocities, h, L):
 
     #First look for smallest distances within each array to apply potential to then update whole diagram
     particle_distances = sp.spatial.distance.cdist(positions, positions)
-    particle_forces = 0.5* forces(positions, particle_distances)
+    particle_forces = forces(positions, particle_distances)
 
     positions_new = euler_position(positions, velocities, h)
     velocities_new = euler_velocity(velocities, h, particle_forces)
