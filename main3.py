@@ -36,7 +36,7 @@ def forces(particle_positions, particle_distances_arr):
     # assuming particle_distances_arr has identical ordering but probably could be more general
     forces_magnitudes = np.zeros((np.shape(particle_distances_arr)))
     forces_magnitudes[:, :] = 4 * (
-        -12 * particle_distances_arr[:, :] ** -12.0
+        -12 * particle_distances_arr[:, :] ** -13.0
         + 6 * particle_distances_arr[:, :] ** -7.0
     )
     forces_magnitudes[np.isnan(forces_magnitudes)] = 0
@@ -45,7 +45,7 @@ def forces(particle_positions, particle_distances_arr):
         forces_magnitudes[np.newaxis, :, :], dimensions, axis=0
     )
     # sum over other particles
-    net_force = np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
+    net_force = -np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
 
     return net_force
 
@@ -224,7 +224,7 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     return results_positions, results_velocities
 
 
-def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing_frames=1):
+def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing_frames=10000):
     fig, ax = plt.subplots()
     ax.set_xlim([-view_size ,view_size ])
     ax.set_ylim([-view_size ,view_size ])
@@ -232,11 +232,12 @@ def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing
     n_particles = np.shape(input_x)[1]
     n_frames = np.shape(input_x)[0] + 1
     lines = []
+    plt.grid()
 
     # set up first frame for plotting and construct all lines
     for i in range(0,n_particles):
         frame = 0 
-        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='--', )
+        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='--', markersize=2)
         lines.append(plotline[0])
 
 
@@ -249,13 +250,14 @@ def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing
         return (lines)
 
     ani = animation.FuncAnimation(fig=fig, func=update, frames=n_frames,  interval=frame_interval, repeat=True, cache_frame_data=False)
+
     plt.show()
 
 
-h=0.05
+h=0.1
 N = 2
 dim = 2
-max_time = 200
+max_time = 100
 L = 20
 v_max = 0.1
 
@@ -268,14 +270,20 @@ rng = np.random.default_rng()
 #x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
 #v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
-x_0 = np.array([[0.51 * L - L/2, 0.4 * L -  L/2], [0.49 * L -  L/2, 0.3 * L -  L/2]])
+x_0 = np.array(
+    [
+        [0.3 * L, 0.51*L],
+        [0.7 * L, 0.49*L]
+     ]
+    )
+x_0 = x_0 - L/2
 v_0 = np.array([[0.09, 0], [-0.09, 0]])
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
 # n-steps, n-particle, dimension
-plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
+# plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 
 
 
-animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=L)
+animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
