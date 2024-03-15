@@ -36,7 +36,7 @@ def forces(particle_positions, particle_distances_arr):
     # assuming particle_distances_arr has identical ordering but probably could be more general
     forces_magnitudes = np.zeros((np.shape(particle_distances_arr)))
     forces_magnitudes[:, :] = 4 * (
-        -12 * particle_distances_arr[:, :] ** -12.0
+        -12 * particle_distances_arr[:, :] ** -13.0
         + 6 * particle_distances_arr[:, :] ** -7.0
     )
     forces_magnitudes[np.isnan(forces_magnitudes)] = 0
@@ -90,7 +90,7 @@ def calc_diff_matrix(particle_positions, dimensions, N_particles):
     diff_matrix = np.zeros((dimensions, N_particles, N_particles))
     for dim in range(0, dimensions):
         axis_positions = particle_positions[:, dim]
-        print(f"{axis_positions=}")
+        #print(f"{axis_positions=}")
         c1 = np.repeat(axis_positions[:, np.newaxis], N_particles, axis=1)
         c2 = np.repeat(axis_positions[np.newaxis, :], N_particles, axis=0)
         diff_matrix[dim, :, :] = c1 - c2
@@ -174,6 +174,17 @@ class verlet():
         self.velocity()
         return self.new_positions, self.new_velocity
         
+    def get_kinetic_energy(self):
+        """Returns kinetic energy T = 1/2mv**2"""
+        v_norm = np.linalg.norm(self.v, axis=0)
+        self.kinetic_energy = 0.5 * self.m * v_norm**2
+        return self.kinetic_energy
+
+    def get_potential_energy(self):
+        """Returns potential energy (Lennard-Jones potential)"""
+        particle_distances = sp.spatial.distance.cdist(self.x, self.x)
+        potential_energy = lennard_jones_natural(particle_distances)
+        return potential_energy[:, 0] #only one column is needed i think
 
 def time_step(positions, velocities, h, L):
 
@@ -199,9 +210,16 @@ def time_step_verlet(positions, velocities, h, L):
     positions_new, velocities_new = verlet_onestep.get_positions_velocity()
 
     positions_new = periodic_bcs(positions_new, L) # apply bcs
+    #print("kinetic energy")
+    #print(verlet_onestep.get_kinetic_energy())
+    kinetic_energy = verlet_onestep.get_kinetic_energy()
+    #print("potential energy")
+    #print(verlet_onestep.get_potential_energy())
+    potential_energy = verlet_onestep.get_potential_energy()
 
 
-    return positions_new, velocities_new
+
+    return positions_new, velocities_new, kinetic_energy, potential_energy
 
 
 def time_loop(initial_positions, initial_velocities, h, max_time, L):
@@ -213,15 +231,17 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     particle_velocities = initial_velocities
     results_positions = np.zeros((N_timesteps, N_particles, N_dimensions))
     results_velocities = np.zeros((N_timesteps, N_particles, N_dimensions))
+    results_energies = np.zeros([N_timesteps, N_particles, 2]) #3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
     results_positions[0, :, :] = initial_positions
     results_velocities[0, :, :] = initial_velocities
 
     for i in range(0, N_timesteps):
-        particle_positions, particle_velocities = time_step_verlet(particle_positions, particle_velocities, h, L) 
+        particle_positions, particle_velocities, results_energies[..., 0], results_energies[..., 1] = time_step_verlet(particle_positions, particle_velocities, h, L) 
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
 
-    return results_positions, results_velocities
+    print(np.sum(results_energies, axis=2))
+    return results_positions, results_velocities, results_energies
 
 
 
@@ -243,7 +263,7 @@ rng = np.random.default_rng()
 
 x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
 v_0 = np.array([[0.09, 0], [-0.09, 0]])
-loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
+loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
 # n-steps, n-particle, dimension
@@ -301,5 +321,5 @@ def update(frame):
 
 # n_frames = np.shape(time_arr)[0]
 # n_frames = 10
-ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
-plt.show()
+#ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
+#plt.show()
