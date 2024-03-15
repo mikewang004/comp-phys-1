@@ -33,7 +33,7 @@ def forces(particle_positions, particle_distances_arr):
     # calculate diff matrix across all dimensions
     for dim in range(0, dimensions):
         axis_positions = particle_positions[:,dim]
-        print(f'{axis_positions=}')
+        #print(f'{axis_positions=}')
         c1 = np.repeat(axis_positions [:,np.newaxis], N_particles, axis=1)
         c2 = np.repeat(axis_positions [np.newaxis, :], N_particles, axis=0)
         diff_matrix[dim, :,:] = c1 -c2       
@@ -98,6 +98,42 @@ def euler_velocity(v, h, net_forces ):
     return v + net_forces* h
 
 
+# def verlet_position(x, v, h, m, net_forces):
+#     "Second order Verlet approximation returns a position"
+#     return x + v * h + h * h * net_forces/ (2 * m)
+
+# def verlet_velocity(x, v, h, m, net_forces):
+#     "Second order Verlet approximation returns a velocity"
+#     net_forces_forward = 
+#     return v + h * h * 
+
+class verlet():
+    "Class implementing everything relating to the Verlet algorithm. Output is"
+    "position and velocity at time t + h"
+    def __init__(self, x, v, h, m, net_forces):
+        self.x = x; self.v = v; self.h = h; self.m = m; self.net_forces = net_forces 
+
+    def position(self):
+        self.new_positions =  self.x + self.v * self.h + self.h*self.h * self.net_forces/ (2 * self.m) 
+        return 0;
+    
+    def new_forces(self):
+        self.position()
+        particle_distances = sp.spatial.distance.cdist(self.new_positions, self.new_positions)
+        self.net_new_forces = forces(self.new_positions, particle_distances)
+        return 0;
+
+    def velocity(self):
+        self.new_forces()
+        self.new_velocity =  self.v + (self.h*self.h / (2 * self.m)) * (self.net_new_forces + self.net_forces)
+        return 0;
+
+    def get_positions_velocity(self):
+        """Returns the positions and velocity in one go. Output is a tuple with (positions, velocity)."""
+        self.velocity()
+        return self.new_positions, self.new_velocity
+        
+
 def time_step(positions, velocities, h, L):
 
     #First look for smallest distances within each array to apply potential to then update whole diagram
@@ -106,6 +142,20 @@ def time_step(positions, velocities, h, L):
 
     positions_new = euler_position(positions, velocities, h)
     velocities_new = euler_velocity(velocities, h, particle_forces)
+
+    positions_new = periodic_bcs(positions_new, L) # apply bcs
+
+
+    return positions_new, velocities_new 
+
+def time_step_verlet(positions, velocities, h, L):
+    """Same as above function except it used the Verlet algorithm"""
+
+    particle_distances = sp.spatial.distance.cdist(positions, positions)
+    particle_forces = forces(positions, particle_distances)
+
+    verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
+    positions_new, velocities_new = verlet_onestep.get_positions_velocity()
 
     positions_new = periodic_bcs(positions_new, L) # apply bcs
 
@@ -126,7 +176,7 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     results_velocities[0, :, :] = initial_velocities
 
     for i in range(0, N_timesteps):
-        particle_positions, particle_velocities = time_step(particle_positions, particle_velocities, h, L) 
+        particle_positions, particle_velocities = time_step_verlet(particle_positions, particle_velocities, h, L) 
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
 
@@ -134,7 +184,7 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
 
 
-h=2
+h=0.01
 N = 2
 dim=2
 max_time = 200
@@ -143,12 +193,15 @@ v_max= 0.1
 
 
 rng = np.random.default_rng()
-# x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-# v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+#x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+#v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
 
-x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
-v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
+#x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
+#v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
+
+x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
+v_0 = np.array([[0.09, 0], [-0.09, 0]])
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles= np.shape(x_0)[0]
@@ -182,6 +235,7 @@ ax.set_xlim([-L,L])
 ax.set_ylim([-L,L])
 
 scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
+#plt.show()
 
 
 # ax.legend()
@@ -189,7 +243,7 @@ scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
 
 def update(frame):
     # for each frame, update the data stored on each artist.
-    multiplier = 1 
+    multiplier = 1000
     frames_in_view = 500
     colors = ['red', 'blue', 'yellow', 'pink', 'green']
     number_of_colors = len(colors)
@@ -206,7 +260,7 @@ def update(frame):
 # n_frames = 10
 ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
 plt.show()
-ax.legend()
+#ax.legend()
 
 
 
