@@ -239,6 +239,35 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     return results_positions, results_velocities, results_energies
 
 
+def animate_results(input_x, input_y, view_size = 10, frame_interval=100, trailing_frames=1):
+    fig, ax = plt.subplots()
+    ax.set_xlim([-view_size ,view_size ])
+    ax.set_ylim([-view_size ,view_size ])
+    
+
+    n_particles = np.shape(input_x)[1]
+    n_frames = np.shape(input_x)[0] + 1
+    lines = []
+    plt.grid()
+    # set up first frame for plotting and construct all lines
+    for i in range(0,n_particles):
+        frame = 0 
+        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='', markersize=2)
+        lines.append(plotline[0])
+
+
+    def update(frame):
+        for i in range(0,len(lines)):
+            line = (lines[i])
+            trailing_frame = max(0, frame - trailing_frames)
+            line.set_xdata(input_x[trailing_frame:frame, i],)
+            line.set_ydata(input_y[trailing_frame :frame, i]) 
+        return (lines)
+
+    ani = animation.FuncAnimation(fig=fig, func=update, frames=n_frames,  interval=frame_interval, repeat=True, cache_frame_data=False)
+
+    plt.show()
+
 
 h=0.01
 N = 10
@@ -267,7 +296,7 @@ v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 #     )
 # x_0 = x_0 - L/2
 # v_0 = np.array([[0.09, 0], [-0.09, 0]])
-loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
+loop_results_x, loop_results_v, loop_results_E = time_loop(x_0, v_0, h, max_time, L)
 x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
 v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
 loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
