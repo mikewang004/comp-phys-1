@@ -9,8 +9,8 @@ time_array = np.arange(0, int(max_time/h))
 # Try energy plot for one particle 
 
 
-plt.scatter(time_array, loop_results_e[:, 1, 0], label = "kinetic", marker=".")
-plt.scatter(time_array, loop_results_e[:, 1, 1], label = "potential", marker = ".")
+plt.scatter(time_array, loop_results_e[:, 0, 0], label = "kinetic", marker=".")
+plt.scatter(time_array, loop_results_e[:, 0, 1], label = "potential", marker = ".")
 #plt.xlim(10, int(max_time/h))
 #plt.scatter(time_array, np.sum(loop_results_e[:, 0, :], axis = 1), label = "total", marker=".")
 plt.legend()

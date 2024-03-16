@@ -12,7 +12,6 @@ test_seed = 100
 
 
 def lennard_jones_natural(dists_nat):
-    # FIX THIS
     epsilon = 1
     "Returns Lennard-Jones potential as given. r_natural is the distance in rescaled (natural) units"
     return 4 * epsilon * ((dists_nat) ** -12 - (dists_nat) ** -6)
@@ -183,10 +182,10 @@ class verlet():
 
     def get_potential_energy(self):
         """Returns potential energy (Lennard-Jones potential)"""
-        #TODO investigate why energy appears to be constant
         particle_distances = sp.spatial.distance.cdist(self.x, self.x)
         potential_energy_square_array = lennard_jones_natural(particle_distances)
-        potential_energy = potential_energy_square_array[~np.isnan(potential_energy_square_array)]
+        potential_energy = potential_energy_square_array[~np.isnan(potential_energy_square_array)] #filter out distances to self
+        #print(potential_energy)
         return np.sum(potential_energy, axis=0) #only one column is needed i think
 
 def time_step(positions, velocities, h, L):
@@ -244,23 +243,23 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
 
 h=0.01
-N = 2
+N = 10
 dim = 2
 max_time = 200
 L = 20
-v_max = 0.1
+v_max = 0.01
 
 
-rng = np.random.default_rng()
-#x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-#v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+rng = np.random.default_rng(seed=test_seed)
+x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
 
 #x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
 #v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
-x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
-v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
+#x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
+#v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
 loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
@@ -287,19 +286,10 @@ hieronder de animatie meuk
 
 
 
-#import matplotlib.animation as animation
+import matplotlib.animation as animation
 
 
-#fig, ax = plt.subplots()
 
-#ax.set_xlim([-L,L])
-#ax.set_ylim([-L,L])
-
-#scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
-#plt.show()
-
-
-# ax.legend()
 
 
 def update(frame):
@@ -318,8 +308,17 @@ def update(frame):
 
 
 
+fig, ax = plt.subplots()
 
+#ax.set_xlim([-L,L])
+#ax.set_ylim([-L,L])
+
+#scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
+#plt.show()
+
+
+# ax.legend()
 # n_frames = np.shape(time_arr)[0]
 # n_frames = 10
-#ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
-#splt.show()
+ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
+plt.show()
