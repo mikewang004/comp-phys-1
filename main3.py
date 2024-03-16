@@ -308,4 +308,4 @@ n_particles = np.shape(x_0)[0]
 
 
 
-animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
+zanimate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
