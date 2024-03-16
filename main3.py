@@ -269,10 +269,65 @@ def animate_results(input_x, input_y, view_size = 10, frame_interval=100, traili
     plt.show()
 
 
-h=0.01
+def animate_quiver(
+    positions_x,
+    positions_y,
+    vec_x,
+    vec_y,
+    view_size=10,
+    frame_interval=10,
+    arrow_scaling=1,
+):
+    # n_particles = np.shape(arrow_positions)[1]
+    n_frames = np.shape(positions_x)[0]
+    print(f'{n_frames=}')
+
+    fig2, ax = plt.subplots(1, 1)
+    quiver = ax.quiver(
+        positions_x[0, :], # 0 for first frame
+        positions_y[0, :],
+        vec_x[0,:],
+        vec_y[0,:],
+        pivot="mid",
+        color="r",
+    )
+
+    ax.set_xlim(-view_size, view_size)
+    ax.set_ylim(-view_size, view_size)
+
+    def update_quiver(n_frame, quiver, positions_x, positions_y, vec_x, vec_y):
+        """updates the horizontal and vertical vector components by a
+        fixed increment on each frame
+        """
+        print(f'{n_frame=}')
+        U = arrow_scaling * vec_x[n_frame,:]
+        V = arrow_scaling * vec_y[n_frame,:]
+
+        positions =np.transpose(np.vstack(( positions_x[n_frame, :], positions_y[n_frame, :])))
+        print(f'{np.shape(positions)=}')
+        quiver.set_offsets(positions )
+        quiver.set_UVC(U, V)
+
+        return (quiver,)
+
+    anim = animation.FuncAnimation(
+        fig2,
+        update_quiver,
+        fargs=(quiver, positions_x, positions_y, vec_x, vec_y),
+        interval=frame_interval,
+        blit=False,
+        frames=n_frames,
+    )
+    plt.show()
+
+    return
+
+
+
+h=1
 N = 10
 dim = 2
-max_time = 10
+max_time = 100
 L = 20
 v_max = 0.01
 
@@ -288,18 +343,18 @@ v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 #x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
 #v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
-# x_0 = np.array(
-#     [
-#         [0.3 * L, 0.51*L],
-#         [0.7 * L, 0.49*L]
-#      ]
-#     )
-# x_0 = x_0 - L/2
-# v_0 = np.array([[0.09, 0], [-0.09, 0]])
+x_0 = np.array(
+    [
+        [0.3 * L, 0.51*L],
+        [0.7 * L, 0.49*L]
+     ]
+    )
+x_0 = x_0 - L/2
+v_0 = np.array([[0.09, 0], [-0.09, 0]])
 loop_results_x, loop_results_v, loop_results_E = time_loop(x_0, v_0, h, max_time, L)
-x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
-v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
-loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
+# x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
+# v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
+# loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
 # n-steps, n-particle, dimension
@@ -308,4 +363,6 @@ n_particles = np.shape(x_0)[0]
 
 
 
+print(f'{np.shape(loop_results_x)=}')
 animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
+animate_quiver(loop_results_x[:,:,0],loop_results_x[:,:,1], loop_results_v[:,:,0], loop_results_v[:,:,1], arrow_scaling=3)
