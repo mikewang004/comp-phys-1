@@ -12,7 +12,6 @@ test_seed = 100
 
 
 def lennard_jones_natural(dists_nat):
-    # FIX THIS
     epsilon = 1
     "Returns Lennard-Jones potential as given. r_natural is the distance in rescaled (natural) units"
     return 4 * epsilon * ((dists_nat) ** -12 - (dists_nat) ** -6)
@@ -182,10 +181,10 @@ class verlet():
 
     def get_potential_energy(self):
         """Returns potential energy (Lennard-Jones potential)"""
-        #TODO investigate why energy appears to be constant
         particle_distances = sp.spatial.distance.cdist(self.x, self.x)
         potential_energy_square_array = lennard_jones_natural(particle_distances)
-        potential_energy = potential_energy_square_array[~np.isnan(potential_energy_square_array)]
+        potential_energy = potential_energy_square_array[~np.isnan(potential_energy_square_array)] #filter out distances to self
+        #print(potential_energy)
         return np.sum(potential_energy, axis=0) #only one column is needed i think
 
 def time_step(positions, velocities, h, L):
@@ -242,13 +241,14 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
 
 h=0.01
-N = 2
+N = 10
 dim = 2
 max_time = 10
 L = 20
-v_max = 0.02
+v_max = 0.01
 
-rng = np.random.default_rng()
+
+rng = np.random.default_rng(seed=test_seed)
 x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
 v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
