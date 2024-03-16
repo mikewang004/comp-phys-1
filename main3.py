@@ -18,7 +18,7 @@ def lennard_jones_natural(dists_nat):
     return 4 * epsilon * ((dists_nat) ** -12 - (dists_nat) ** -6)
 
 
-def forces(particle_positions, particle_distances_arr_old, L):
+def forces(particle_positions, L):
     """return net force array for all particles
 
     Args:
@@ -38,12 +38,10 @@ def forces(particle_positions, particle_distances_arr_old, L):
 
     # norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix, particle_distances_arr)
     norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix_min_image)
-    print(f"{np.sum(norm_diff_matrix > L/2)}")
-    print("hallo")
 
     # assuming particle_distances_arr has identical ordering but probably could be more general
     diagonals = np.eye(N_particles, N_particles, dtype=bool)
-    forces_magnitudes = np.zeros((np.shape(particle_distances_arr)))
+    forces_magnitudes = np.empty((np.shape(particle_distances_arr)))
     forces_magnitudes[~diagonals] = (
         4* (
             -12 * particle_distances_arr[~diagonals] ** -13.0
@@ -177,8 +175,7 @@ class verlet:
 
     def new_forces(self):
         self.position()
-        particle_distances = sp.spatial.distance.cdist(self.new_positions, self.new_positions)
-        self.net_new_forces = forces(self.new_positions, particle_distances, L)
+        self.net_new_forces = forces(self.new_positions, L)
         return 0
 
     def velocity(self):
@@ -214,8 +211,7 @@ class verlet:
 def time_step(positions, velocities, h, L):
 
     # First look for smallest distances within each array to apply potential to then update whole diagram
-    particle_distances = sp.spatial.distance.cdist(positions, positions)
-    particle_forces = forces(positions, particle_distances, L)
+    particle_forces = forces(positions, L)
 
     positions_new = euler_position(positions, velocities, h)
     velocities_new = euler_velocity(velocities, h, particle_forces)
@@ -228,9 +224,7 @@ def time_step(positions, velocities, h, L):
 def time_step_verlet(positions, velocities, h, L):
     """Same as above function except it used the Verlet algorithm"""
 
-    particle_distances = sp.spatial.distance.cdist(positions, positions)
-    particle_forces = forces(positions, particle_distances, L)
-
+    particle_forces = forces(positions, L)
     verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
     kinetic_energy = verlet_onestep.get_kinetic_energy()
     potential_energy = verlet_onestep.get_potential_energy()
@@ -269,8 +263,7 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
         # print(results_energies[i, :, 0])
         results_positions[i, :, :] = particle_positions
         results_velocities[i, :, :] = particle_velocities
-        particle_distances = sp.spatial.distance.cdist(particle_positions, particle_positions)
-        results_forces[i, :, :] = forces(particle_positions, particle_distances, L)
+        results_forces[i, :, :] = forces(particle_positions, L)
     return results_positions, results_velocities, results_energies, results_forces
 
 
