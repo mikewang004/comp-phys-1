@@ -36,8 +36,8 @@ def forces(particle_positions, particle_distances_arr):
     diagonals = np.eye(N_particles, N_particles, dtype=bool)
     forces_magnitudes = np.zeros((np.shape(particle_distances_arr)))
     forces_magnitudes[~diagonals] = 4 * (
-        -12 * particle_distances_arr[~diagonals] ** -13.0
-        + 6 * particle_distances_arr[~diagonals] ** -7.0
+        12 * particle_distances_arr[~diagonals] ** -2
+        # + 6 * particle_distances_arr[~diagonals] ** -7.0
     )
 
     net_force = np.zeros((N_particles, dimensions))
@@ -227,6 +227,7 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     results_positions = np.zeros((N_timesteps, N_particles, N_dimensions))
     results_velocities = np.zeros((N_timesteps, N_particles, N_dimensions))
     results_energies = np.zeros([N_timesteps, N_particles, 2]) #3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
+    results_forces = np.zeros([N_timesteps, N_particles, 2]) #3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
     results_positions[0, :, :] = initial_positions
     results_velocities[0, :, :] = initial_velocities
 
@@ -235,8 +236,9 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
         #print(results_energies[i, :, 0])
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
-
-    return results_positions, results_velocities, results_energies
+        particle_distances = sp.spatial.distance.cdist(particle_positions, particle_positions)
+        results_forces[i,:,:] = forces(particle_positions, particle_distances)
+    return results_positions, results_velocities, results_energies, results_forces
 
 
 def animate_results(input_x, input_y, view_size = 10, frame_interval=100, trailing_frames=1):
@@ -288,8 +290,8 @@ def animate_quiver(
         positions_y[0, :],
         vec_x[0,:],
         vec_y[0,:],
-        pivot="mid",
-        color="r",
+        # pivot="mid",
+        # color="r",
     )
 
     ax.set_xlim(-view_size, view_size)
@@ -324,8 +326,8 @@ def animate_quiver(
 
 
 
-h=1
-N = 10
+h=0.1
+N = 5
 dim = 2
 max_time = 100
 L = 20
@@ -333,25 +335,31 @@ v_max = 0.01
 
 
 rng = np.random.default_rng(seed=test_seed)
-x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+# x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+# v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
 
 # print(x_0)
 # print(v_0)
 
-#x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
-#v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
+# x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
+# v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
 x_0 = np.array(
     [
-        [0.3 * L, 0.51*L],
-        [0.7 * L, 0.49*L]
+        [0.3 * L, 0.20*L], #x1, y1
+        [0.7 * L, 0.20*L] #x2, y2
      ]
     )
-x_0 = x_0 - L/2
-v_0 = np.array([[0.09, 0], [-0.09, 0]])
-loop_results_x, loop_results_v, loop_results_E = time_loop(x_0, v_0, h, max_time, L)
+# x_0 = x_0 - L/2
+v_0 = np.array([
+    [-0.09, 0], 
+    [0.09, 0]
+    ])
+
+
+
+loop_results_x, loop_results_v, loop_results_E, loop_results_F = time_loop(x_0, v_0, h, max_time, L)
 # x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
 # v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
 # loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
@@ -364,5 +372,5 @@ n_particles = np.shape(x_0)[0]
 
 
 print(f'{np.shape(loop_results_x)=}')
-animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
-animate_quiver(loop_results_x[:,:,0],loop_results_x[:,:,1], loop_results_v[:,:,0], loop_results_v[:,:,1], arrow_scaling=3)
+# animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
+animate_quiver(loop_results_x[:,:,0],loop_results_x[:,:,1], loop_results_F[:,:,0], loop_results_F[:,:,1], arrow_scaling=1)
