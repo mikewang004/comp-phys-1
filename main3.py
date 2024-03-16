@@ -177,8 +177,8 @@ class verlet():
     def get_kinetic_energy(self):
         """Returns kinetic energy T = 1/2mv**2"""
         v_norm = np.linalg.norm(self.v, axis=1)
-        #print(v_norm)
         self.kinetic_energy = 0.5 * self.m * v_norm**2
+        #print(self.kinetic_energy)
         return self.kinetic_energy
 
     def get_potential_energy(self):
@@ -210,17 +210,11 @@ def time_step_verlet(positions, velocities, h, L):
     particle_forces = forces(positions, particle_distances)
 
     verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
+    kinetic_energy = verlet_onestep.get_kinetic_energy()
+    potential_energy = verlet_onestep.get_potential_energy()
     positions_new, velocities_new = verlet_onestep.get_positions_velocity()
 
     positions_new = periodic_bcs(positions_new, L) # apply bcs
-    #print("kinetic energy")
-    #print(verlet_onestep.get_kinetic_energy())
-    kinetic_energy = verlet_onestep.get_kinetic_energy()
-    #print("potential energy")
-    #print(verlet_onestep.get_potential_energy())
-    potential_energy = verlet_onestep.get_potential_energy()
-
-
 
     return positions_new, velocities_new, kinetic_energy, potential_energy
 
@@ -239,13 +233,12 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     results_velocities[0, :, :] = initial_velocities
 
     for i in range(0, N_timesteps):
-        particle_positions, particle_velocities, results_energies[..., 0], results_energies[..., 1] = time_step_verlet(particle_positions, particle_velocities, h, L) 
+        particle_positions, particle_velocities, results_energies[i,:, 0], results_energies[i,:, 1] = time_step_verlet(particle_positions, particle_velocities, h, L) 
+        #print(results_energies[i, :, 0])
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
 
-    #print(np.sum(results_energies, axis=2))
-    print(results_energies[..., 0])
-    print(results_velocities[:, :, 0])
+
     return results_positions, results_velocities, results_energies
 
 
@@ -272,7 +265,7 @@ loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time
 
 n_particles = np.shape(x_0)[0]
 # n-steps, n-particle, dimension
-plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
+#plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 
 # plt.xlim(0, 20)
 # plt.ylim(0, 20)
@@ -294,15 +287,15 @@ hieronder de animatie meuk
 
 
 
-import matplotlib.animation as animation
+#import matplotlib.animation as animation
 
 
-fig, ax = plt.subplots()
+#fig, ax = plt.subplots()
 
-ax.set_xlim([-L,L])
-ax.set_ylim([-L,L])
+#ax.set_xlim([-L,L])
+#ax.set_ylim([-L,L])
 
-scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
+#scat = ax.scatter(loop_results_x[:,0,0], loop_results_x[:,0,1], s=0)
 #plt.show()
 
 
@@ -324,7 +317,9 @@ def update(frame):
     return (scat, bottom_line)
 
 
+
+
 # n_frames = np.shape(time_arr)[0]
 # n_frames = 10
-ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
-plt.show()
+#ani = animation.FuncAnimation(fig=fig, func=update,  interval=30, repeat=True)
+#splt.show()
