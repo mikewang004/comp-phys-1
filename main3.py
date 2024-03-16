@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sp
@@ -18,7 +19,7 @@ def lennard_jones_natural(dists_nat):
     return 4 * epsilon * ((dists_nat) ** -12 - (dists_nat) ** -6)
 
 
-def forces(particle_positions, L):
+def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
     """return net force array for all particles
 
     Args:
@@ -26,10 +27,28 @@ def forces(particle_positions, L):
         particle_distances_arr (arr): N x N array
     """
     # number of columns in the positions array corresponds to the dimension
-    dimensions = np.shape(particle_positions)[1]
-    N_particles = np.shape(particle_positions)[0]
 
     # calculate diff matrix across all dimensions
+
+    # assuming particle_distances_arr has identical ordering but probably could be more general
+    diagonals = np.eye(
+        np.shape(particle_distances_arr)[0], np.shape(particle_distances_arr)[1], dtype=bool
+    )
+    forces_magnitudes = np.empty((np.shape(particle_distances_arr)))
+    forces_magnitudes[~diagonals] = 4 * (
+        -12 * particle_distances_arr[~diagonals] ** -13.0
+        + 6 * particle_distances_arr[~diagonals] ** -7.0
+    )
+
+    net_force = np.zeros(np.shape(particle_distances_arr))
+    repeated_force_magnitudes = np.repeat(forces_magnitudes[np.newaxis, :, :], dimensions, axis=0)
+    # sum over other particles, '-1' for -nabla  V.
+    net_force = -np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
+
+    return net_force
+
+
+def get_diff_and_dist(particle_positions, L, dimensions, N_particles):
     diff_matrix = calc_diff_matrix(particle_positions, dimensions, N_particles)
 
     # apply minimal image convention
@@ -38,23 +57,7 @@ def forces(particle_positions, L):
 
     # norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix, particle_distances_arr)
     norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix_min_image)
-
-    # assuming particle_distances_arr has identical ordering but probably could be more general
-    diagonals = np.eye(N_particles, N_particles, dtype=bool)
-    forces_magnitudes = np.empty((np.shape(particle_distances_arr)))
-    forces_magnitudes[~diagonals] = (
-        4* (
-            -12 * particle_distances_arr[~diagonals] ** -13.0
-            + 6 * particle_distances_arr[~diagonals] ** -7.0
-        )
-    )
-
-    net_force = np.zeros((N_particles, dimensions))
-    repeated_force_magnitudes = np.repeat(forces_magnitudes[np.newaxis, :, :], dimensions, axis=0)
-    # sum over other particles, '-1' for -nabla  V.
-    net_force = -np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
-
-    return net_force
+    return particle_distances_arr, norm_diff_matrix
 
 
 def normalize_diff_matrix(dimensions, N_particles, diff_matrix):
@@ -159,12 +162,14 @@ class verlet:
     "Class implementing everything relating to the Verlet algorithm. Output is"
     "position and velocity at time t + h"
 
-    def __init__(self, x, v, h, m, net_forces):
+    def __init__(self, x, v, h, m, net_forces, dimensions, n_particles, L):
         self.x = x
         self.v = v
         self.h = h
         self.m = m
         self.net_forces = net_forces
+        self.dimensions = dimensions
+        self.n_particles = n_particles
         self.L = L
 
     def position(self):
@@ -175,7 +180,10 @@ class verlet:
 
     def new_forces(self):
         self.position()
-        self.net_new_forces = forces(self.new_positions, L)
+        particle_distances_arr, norm_diff_matrix = get_diff_and_dist(
+            self.new_positions, L, self.dimensions, self.n_particles
+        )
+        self.net_new_forces = forces(particle_distances_arr, norm_diff_matrix, L, self.dimensions)
         return 0
 
     def velocity(self):
@@ -208,24 +216,29 @@ class verlet:
         return np.sum(potential_energy, axis=0)  # only one column is needed i think
 
 
-def time_step(positions, velocities, h, L):
+# def time_step(positions, velocities, h, L):
 
-    # First look for smallest distances within each array to apply potential to then update whole diagram
-    particle_forces = forces(positions, L)
+#     # First look for smallest distances within each array to apply potential to then update whole diagram
+#     particle_forces = forces(positions, L)
 
-    positions_new = euler_position(positions, velocities, h)
-    velocities_new = euler_velocity(velocities, h, particle_forces)
+#     positions_new = euler_position(positions, velocities, h)
+#     velocities_new = euler_velocity(velocities, h, particle_forces)
 
-    positions_new = periodic_bcs(positions_new, L)  # apply bcs
+#     positions_new = periodic_bcs(positions_new, L)  # apply bcs
 
-    return positions_new, velocities_new
+#     return positions_new, velocities_new
 
 
-def time_step_verlet(positions, velocities, h, L):
+def time_step_verlet(positions, velocities, h, L, dimensions, N_particles):
     """Same as above function except it used the Verlet algorithm"""
 
-    particle_forces = forces(positions, L)
-    verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
+    particle_distances_arr, norm_diff_matrix = get_diff_and_dist(
+        positions, L, dimensions, N_particles
+    )
+    particle_forces = forces(particle_distances_arr, norm_diff_matrix, L, dimensions)
+    verlet_onestep = verlet(
+        positions, velocities, h, 1, particle_forces, dimensions, N_particles, L
+    )
     kinetic_energy = verlet_onestep.get_kinetic_energy()
     potential_energy = verlet_onestep.get_potential_energy()
     positions_new, velocities_new = verlet_onestep.get_positions_velocity()
@@ -250,6 +263,8 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     results_forces = np.zeros(
         [N_timesteps, N_particles, 2]
     )  # 3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
+    results_diffs = np.zeros((N_timesteps, N_particles,N_particles, N_dimensions))
+
     results_positions[0, :, :] = initial_positions
     results_velocities[0, :, :] = initial_velocities
 
@@ -259,12 +274,20 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
             particle_velocities,
             results_energies[i, :, 0],
             results_energies[i, :, 1],
-        ) = time_step_verlet(particle_positions, particle_velocities, h, L)
+        ) = time_step_verlet(
+            particle_positions, particle_velocities, h, L, N_dimensions, N_particles
+        )
         # print(results_energies[i, :, 0])
         results_positions[i, :, :] = particle_positions
         results_velocities[i, :, :] = particle_velocities
-        results_forces[i, :, :] = forces(particle_positions, L)
-    return results_positions, results_velocities, results_energies, results_forces
+
+        particle_distances_arr, norm_diff_matrix = get_diff_and_dist(
+            particle_positions, L, N_dimensions, N_particles
+        )
+
+        results_forces[i, :, :] = forces(particle_distances_arr, norm_diff_matrix, L, N_dimensions)
+
+    return results_positions, results_velocities, results_energies, results_forces, norm_diff_matrix 
 
 
 def animate_results(input_x, input_y, view_size=10, frame_interval=100, trailing_frames=1):
@@ -388,20 +411,25 @@ x_0 = np.array(
     )
 x_0 = x_0 - L/2
 v_0 = np.array([
-    [0.09, 0.1], 
+    [0.09, 0.1],
     [-0.09, 0.1]
     ])
 
-loop_results_x, loop_results_v, loop_results_E, loop_results_F = time_loop(x_0, v_0, h, max_time, L)
+loop_results_x, loop_results_v, loop_results_E, loop_results_F, loop_results_diff = time_loop(x_0, v_0, h, max_time, L)
 # x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
 # v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
 # loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
+
+#%%
+print(f"{np.shape(loop_results_diff)=}")
+print(f"{np.shape(loop_results_F)=}")
 # n-steps, n-particle, dimension
 # plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 # plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 
+#%%
 
 print(f"{np.shape(loop_results_x)=}")
 # animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
@@ -413,3 +441,5 @@ animate_quiver(
     arrow_scaling=0.01,
     frame_interval=1,
 )
+
+# %%
