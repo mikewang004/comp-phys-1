@@ -173,6 +173,20 @@ class verlet():
         self.velocity()
         return self.new_positions, self.new_velocity
         
+    def get_kinetic_energy(self):
+        """Returns kinetic energy T = 1/2mv**2"""
+        v_norm = np.linalg.norm(self.v, axis=1)
+        self.kinetic_energy = 0.5 * self.m * v_norm**2
+        #print(self.kinetic_energy)
+        return self.kinetic_energy
+
+    def get_potential_energy(self):
+        """Returns potential energy (Lennard-Jones potential)"""
+        #TODO investigate why energy appears to be constant
+        particle_distances = sp.spatial.distance.cdist(self.x, self.x)
+        potential_energy_square_array = lennard_jones_natural(particle_distances)
+        potential_energy = potential_energy_square_array[~np.isnan(potential_energy_square_array)]
+        return np.sum(potential_energy, axis=0) #only one column is needed i think
 
 def time_step(positions, velocities, h, L):
 
@@ -195,12 +209,13 @@ def time_step_verlet(positions, velocities, h, L):
     particle_forces = forces(positions, particle_distances)
 
     verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
+    kinetic_energy = verlet_onestep.get_kinetic_energy()
+    potential_energy = verlet_onestep.get_potential_energy()
     positions_new, velocities_new = verlet_onestep.get_positions_velocity()
 
     positions_new = periodic_bcs(positions_new, L) # apply bcs
 
-
-    return positions_new, velocities_new
+    return positions_new, velocities_new, kinetic_energy, potential_energy
 
 
 def time_loop(initial_positions, initial_velocities, h, max_time, L):
@@ -212,49 +227,22 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     particle_velocities = initial_velocities
     results_positions = np.zeros((N_timesteps, N_particles, N_dimensions))
     results_velocities = np.zeros((N_timesteps, N_particles, N_dimensions))
+    results_energies = np.zeros([N_timesteps, N_particles, 2]) #3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
     results_positions[0, :, :] = initial_positions
     results_velocities[0, :, :] = initial_velocities
 
     for i in range(0, N_timesteps):
-        particle_positions, particle_velocities = time_step_verlet(particle_positions, particle_velocities, h, L) 
+        particle_positions, particle_velocities, results_energies[i,:, 0], results_energies[i,:, 1] = time_step_verlet(particle_positions, particle_velocities, h, L) 
+        #print(results_energies[i, :, 0])
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
 
-    return results_positions, results_velocities
+    return results_positions, results_velocities, results_energies
 
 
-def animate_results(input_x, input_y, view_size = 10, frame_interval=100, trailing_frames=1):
-    fig, ax = plt.subplots()
-    ax.set_xlim([-view_size ,view_size ])
-    ax.set_ylim([-view_size ,view_size ])
-    
 
-    n_particles = np.shape(input_x)[1]
-    n_frames = np.shape(input_x)[0] + 1
-    lines = []
-    plt.grid()
-    # set up first frame for plotting and construct all lines
-    for i in range(0,n_particles):
-        frame = 0 
-        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='', markersize=2)
-        lines.append(plotline[0])
-
-
-    def update(frame):
-        for i in range(0,len(lines)):
-            line = (lines[i])
-            trailing_frame = max(0, frame - trailing_frames)
-            line.set_xdata(input_x[trailing_frame:frame, i],)
-            line.set_ydata(input_y[trailing_frame :frame, i]) 
-        return (lines)
-
-    ani = animation.FuncAnimation(fig=fig, func=update, frames=n_frames,  interval=frame_interval, repeat=True, cache_frame_data=False)
-
-    plt.show()
-
-
-h=0.011
-N = 20
+h=0.01
+N = 2
 dim = 2
 max_time = 10
 L = 20
@@ -280,9 +268,13 @@ v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 # x_0 = x_0 - L/2
 # v_0 = np.array([[0.09, 0], [-0.09, 0]])
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
+x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
+v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
+loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
 # n-steps, n-particle, dimension
+#plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 # plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 
 
