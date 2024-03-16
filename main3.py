@@ -34,17 +34,18 @@ def forces(particle_positions, particle_distances_arr):
     norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix)
 
     # assuming particle_distances_arr has identical ordering but probably could be more general
+    diagonals = np.eye(N_particles, N_particles, dtype=bool)
     forces_magnitudes = np.zeros((np.shape(particle_distances_arr)))
-    forces_magnitudes[:, :] = 4 * (
-        -12 * particle_distances_arr[:, :] ** -13.0
-        + 6 * particle_distances_arr[:, :] ** -7.0
+    forces_magnitudes[~diagonals] = 4 * (
+        -12 * particle_distances_arr[~diagonals] ** -13.0
+        + 6 * particle_distances_arr[~diagonals] ** -7.0
     )
-    forces_magnitudes[np.isnan(forces_magnitudes)] = 0
+
     net_force = np.zeros((N_particles, dimensions))
     repeated_force_magnitudes = np.repeat(
         forces_magnitudes[np.newaxis, :, :], dimensions, axis=0
     )
-    # sum over other particles
+    # sum over other particles, '-1' for -nabla  V.
     net_force = -np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
 
     return net_force
@@ -63,17 +64,16 @@ def normalize_diff_matrix(dimensions, N_particles, diff_matrix):
     """
     # make a matrix to store the inverted norm of all diff vectors so we can normalize them
     diff_matrix_inv_norm = np.zeros((N_particles, N_particles))
+    diagonals = np.eye(N_particles, N_particles, dtype=bool)
     # sum the squares of elements across all dimensions
-    diff_matrix_inv_norm[:, :] = 1 / np.sqrt((np.sum(diff_matrix[:, :] ** 2, axis=0)))
+    norm = np.linalg.norm(diff_matrix, axis=0)
+    diff_matrix_inv_norm[~diagonals] = 1 / norm[~diagonals ]
 
     # do the normalization
-    norm_diff_matrix = diff_matrix.copy()
-    norm_diff_matrix[:, :, :] = norm_diff_matrix[:, :, :] * (
+    diff_matrix[:, :, :] = diff_matrix[:, :, :] * (
         np.repeat(diff_matrix_inv_norm[np.newaxis, :, :], dimensions, axis=0)
     )
-    norm_diff_matrix[np.isnan(norm_diff_matrix)] = 0
-    return norm_diff_matrix
-
+    return diff_matrix
 
 def calc_diff_matrix(particle_positions, dimensions, N_particles):
     """
@@ -90,7 +90,6 @@ def calc_diff_matrix(particle_positions, dimensions, N_particles):
     diff_matrix = np.zeros((dimensions, N_particles, N_particles))
     for dim in range(0, dimensions):
         axis_positions = particle_positions[:, dim]
-        print(f"{axis_positions=}")
         c1 = np.repeat(axis_positions[:, np.newaxis], N_particles, axis=1)
         c2 = np.repeat(axis_positions[np.newaxis, :], N_particles, axis=0)
         diff_matrix[dim, :, :] = c1 - c2
@@ -115,7 +114,7 @@ def periodic_bcs(positions, box_length):
     ) - box_length / 2
     positions[positions < -box_length / 2] = (
         (positions[positions < -box_length / 2] - box_length / 2) % box_length
-    ) + box_length / 2
+    ) - box_length / 2
     return positions
 
 
@@ -224,20 +223,20 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     return results_positions, results_velocities
 
 
-def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing_frames=10000):
+def animate_results(input_x, input_y, view_size = 10, frame_interval=100, trailing_frames=1):
     fig, ax = plt.subplots()
     ax.set_xlim([-view_size ,view_size ])
     ax.set_ylim([-view_size ,view_size ])
+    
 
     n_particles = np.shape(input_x)[1]
     n_frames = np.shape(input_x)[0] + 1
     lines = []
     plt.grid()
-
     # set up first frame for plotting and construct all lines
     for i in range(0,n_particles):
         frame = 0 
-        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='--', markersize=2)
+        plotline = ax.plot(input_x[frame, i], input_y[frame, i], marker='o', linestyle='', markersize=2)
         lines.append(plotline[0])
 
 
@@ -254,30 +253,32 @@ def animate_results(input_x, input_y, view_size = 10, frame_interval=1, trailing
     plt.show()
 
 
-h=0.1
-N = 2
+h=0.011
+N = 20
 dim = 2
-max_time = 100
+max_time = 10
 L = 20
-v_max = 0.1
-
+v_max = 0.02
 
 rng = np.random.default_rng()
-#x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-#v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
+
+# print(x_0)
+# print(v_0)
 
 #x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
 #v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
 
-x_0 = np.array(
-    [
-        [0.3 * L, 0.51*L],
-        [0.7 * L, 0.49*L]
-     ]
-    )
-x_0 = x_0 - L/2
-v_0 = np.array([[0.09, 0], [-0.09, 0]])
+# x_0 = np.array(
+#     [
+#         [0.3 * L, 0.51*L],
+#         [0.7 * L, 0.49*L]
+#      ]
+#     )
+# x_0 = x_0 - L/2
+# v_0 = np.array([[0.09, 0], [-0.09, 0]])
 loop_results_x, loop_results_v = time_loop(x_0, v_0, h, max_time, L)
 
 n_particles = np.shape(x_0)[0]
