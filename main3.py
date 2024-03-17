@@ -20,7 +20,7 @@ def lennard_jones_natural(dists_nat):
 
 def nabla_lennard_jones_natural(dists_nat):
     "Returns dau Lennard-Jones potential / dau r_natural as given. r_natural is the distance in rescaled (natural) units"
-    return 4 * (-12 * dists_nat ** -13.0 + 6 * dists_nat ** -7.0
+    return 4 * (12 * dists_nat ** -13.0 - 6 * dists_nat ** -7.0
     )
 
 def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
@@ -53,7 +53,8 @@ def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
 
     return net_force
 
-def forces(particle_positions, particle_distances_arr, epsilon = epsilon):
+
+def forces2(particle_positions, particle_distances_arr, epsilon = epsilon):
     """Rewrite of above function. Implementation of 12-6 potential""" 
     """U(r) = 4 (r**(-12) - r**(-6)) with r reduced distance"""
     #TODO fix for 3d
