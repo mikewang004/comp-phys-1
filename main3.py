@@ -23,6 +23,7 @@ def nabla_lennard_jones_natural(dists_nat):
     return 4 * (12 * dists_nat ** -13.0 - 6 * dists_nat ** -7.0
     )
 
+
 def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
     """return net force array for all particles
 
@@ -30,6 +31,10 @@ def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
         particle_positions (arr): positions in N-d for the particles
         particle_distances_arr (arr): N x N array
     """
+    epsilon = 1.654e-21 #J
+    sigma = 3.405e-10 #m
+    mass = 6.6e-26 #kg
+    mass = 1
     # number of columns in the positions array corresponds to the dimension
 
     # calculate diff matrix across all dimensions
@@ -40,8 +45,8 @@ def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
     )
     forces_magnitudes = np.empty((np.shape(particle_distances_arr)))
     forces_magnitudes[~diagonals] = 4 * (
-        -12 * particle_distances_arr[~diagonals] ** -13.0
-        + 6 * particle_distances_arr[~diagonals] ** -7.0
+        12 * particle_distances_arr[~diagonals] ** -13.0
+        - 6 * particle_distances_arr[~diagonals] ** -7.0
     )
 
     net_force = np.zeros((N_particles, dimensions))
@@ -49,7 +54,7 @@ def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
         forces_magnitudes[np.newaxis, :, :], dimensions, axis=0
     )
     # sum over other particles, '-1' for -nabla  V.
-    net_force = -np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
+    net_force = -epsilon/(mass * sigma**2) * np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
 
     return net_force
 
@@ -312,7 +317,7 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     return results_positions, results_velocities, results_energies, results_forces, results_diffs
 
 
-def animate_results(input_x, input_y, view_size=10, frame_interval=100, trailing_frames=1):
+def animate_results(input_x, input_y, view_size=10, frame_interval=10, trailing_frames=1):
     fig, ax = plt.subplots()
     ax.set_xlim([-view_size, view_size])
     ax.set_ylim([-view_size, view_size])
@@ -405,7 +410,7 @@ def animate_quiver(
     return
 
 
-h = 0.2
+h = 0.1
 N = 20
 dim = 2
 max_time = 100
@@ -421,23 +426,23 @@ v_max = 1
 # print(x_0)
 # print(v_0)
 
-# x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
-# v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
+x_0 = np.array([[-0.2 * L, 0.01 * L], [0.2 * L, -0.01 * L]])
+v_0 = np.array([[0.09, -0.00], [-0.09, 0.00]])
 
 
-x_0 = np.array(
-    [
-        [0.3 * L, 0.25*L], #x1, y1
-        [0.4 * L, 0.25*L], #x1, y1
-        [0.7 * L, 0.15*L] #x2, y2
-     ]
-    )
-x_0 = x_0 - L/2
-v_0 = np.array([
-    [0.09, 0.1],
-    [0.19, 0.1],
-    [-0.09, 0.1]
-    ])
+# x_0 = np.array(
+#     [
+#         [1,0,], #x1, y1
+#         [2,0], #x1, y1
+#         [3,3] #x2, y2
+#      ]
+#     )
+# # x_0 = x_0 - L/2
+# v_0 = np.array([
+#     [0.09, 0.1],
+#     [1.19, 0.1],
+#     [-0.09, 0.1]
+#     ])
 
 loop_results_x, loop_results_v, loop_results_E, loop_results_F, loop_results_diff = time_loop(x_0, v_0, h, max_time, L)
 # x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
@@ -457,17 +462,31 @@ print(f"{np.shape(loop_results_F)=}")
 
 print(f"na loop {np.shape(loop_results_diff[:,0,1,0])=}")
 # diff vector of particle N with particle 1
+
+# diff_step_0 = calc_diff_matrix(x_0, 2, 3)
+# print(f'{diff_step_0=}')
+
 selected_diff = loop_results_diff[:,:,1,:]
-print(f'{np.linalg.norm(selected_diff, axis=2)=}')
+# selected_diff = diff_step_0
+print(f'{selected_diff=}')
+# print(f'{np.linalg.norm(selected_diff, axis=2)=}')
 # selected_diff_y = loop_results_diff[:,0,1,1]
 
-# animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
+animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L, trailing_frames = 1000)
 animate_quiver(
     loop_results_x[:, :, 0],
     loop_results_x[:, :, 1],
-    selected_diff[:, 0],
-    selected_diff[:, 1],
+    selected_diff[:,0],
+    selected_diff[:,1],
     arrow_scaling=1,
+    frame_interval=1,
+)
+animate_quiver(
+    loop_results_x[:, :, 0],
+    loop_results_x[:, :, 1],
+    loop_results_F[:,0],
+    loop_results_F[:,1],
+    arrow_scaling=0.01,
     frame_interval=1,
 )
 
