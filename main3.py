@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 
 # Define constants
 
-
+epsilon = 1; sigma = 3.405 #Angstrom 
 test_seed = 100
 
 # Note nabla U = 4 * epsilon (( -12 * sigma**12 * r**(-13)) - 6*sigma**6 * r**(-7))
@@ -18,6 +18,10 @@ def lennard_jones_natural(dists_nat):
     "Returns Lennard-Jones potential as given. r_natural is the distance in rescaled (natural) units"
     return 4 * epsilon * ((dists_nat) ** -12 - (dists_nat) ** -6)
 
+def nabla_lennard_jones_natural(dists_nat):
+    "Returns dau Lennard-Jones potential / dau r_natural as given. r_natural is the distance in rescaled (natural) units"
+    return 4 * (-12 * dists_nat ** -13.0 + 6 * dists_nat ** -7.0
+    )
 
 def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
     """return net force array for all particles
@@ -40,13 +44,27 @@ def forces(particle_distances_arr, norm_diff_matrix, L, dimensions):
         + 6 * particle_distances_arr[~diagonals] ** -7.0
     )
 
-    net_force = np.zeros(np.shape(particle_distances_arr))
-    repeated_force_magnitudes = np.repeat(forces_magnitudes[np.newaxis, :, :], dimensions, axis=0)
+    net_force = np.zeros((N_particles, dimensions))
+    repeated_force_magnitudes = np.repeat(
+        forces_magnitudes[np.newaxis, :, :], dimensions, axis=0
+    )
     # sum over other particles, '-1' for -nabla  V.
     net_force = -np.sum(repeated_force_magnitudes * norm_diff_matrix, axis=1).T
 
     return net_force
 
+def forces(particle_positions, particle_distances_arr, epsilon = epsilon):
+    """Rewrite of above function. Implementation of 12-6 potential""" 
+    """U(r) = 4 (r**(-12) - r**(-6)) with r reduced distance"""
+    #TODO fix for 3d
+    particle_distances = sp.spatial.distance.cdist(particle_positions, particle_positions)
+    #print(particle_distances)
+    # Calculate force corresponding to distance
+    particle_pot_force = -1 *nabla_lennard_jones_natural(particle_distances)
+    particle_pot_force_sum = np.nansum(particle_pot_force, axis = 1)
+    test = np.repeat(particle_pot_force_sum[..., np.newaxis], 2, axis = -1)
+    #print(test.shape)
+    return test
 
 def get_diff_and_dist(particle_positions, L, dimensions, N_particles):
     diff_matrix = calc_diff_matrix(particle_positions, dimensions, N_particles)
@@ -198,6 +216,7 @@ class verlet:
 
     def get_kinetic_energy(self):
         """Returns kinetic energy T = 1/2mv**2"""
+        #print(self.v[1, :])
         v_norm = np.linalg.norm(self.v, axis=1)
         self.kinetic_energy = 0.5 * self.m * v_norm**2
         # print(self.kinetic_energy)
