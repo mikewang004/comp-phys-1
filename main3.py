@@ -68,8 +68,16 @@ def forces(particle_positions, particle_distances_arr):
     """Rewrite of above function. Implementation of 12-6 potential""" 
     """U(r) = 4 (r**(-12) - r**(-6)) with r reduced distance"""
     #First calculate distances per dimension and in total 
+    # Note dimension encoded in last axis of array 
+    dim = particle_positions.shape[-1]; size = particle_positions[0]
     particle_distances = sp.spatial.distance.cdist(particle_positions, particle_positions)
-    particle_distances_dim = 2
+    particle_distances_dim = np.zeros([zero, size, size])
+    # Calculate particle distances on vector-element-level
+    for i in range (0, dim):
+        particle_distances_dim[i] = particle_positions[:, i] - particle_positions.transpose[:, i]
+
+    # Apply 12-6 potential 
+
 
 def get_diff_and_dist(particle_positions, L, dimensions, N_particles):
     diff_matrix = calc_diff_matrix(particle_positions, dimensions, N_particles)
