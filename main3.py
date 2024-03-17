@@ -5,7 +5,7 @@ import scipy.constants as spc
 import matplotlib.animation as animation
 # Define constants
 
-
+epsilon = 1; sigma = 3.405 #Angstrom 
 test_seed = 100
 
 # Note nabla U = 4 * epsilon (( -12 * sigma**12 * r**(-13)) - 6*sigma**6 * r**(-7))
@@ -16,8 +16,12 @@ def lennard_jones_natural(dists_nat):
     "Returns Lennard-Jones potential as given. r_natural is the distance in rescaled (natural) units"
     return 4 * epsilon * ((dists_nat) ** -12 - (dists_nat) ** -6)
 
+def nabla_lennard_jones_natural(dists_nat):
+    "Returns dau Lennard-Jones potential / dau r_natural as given. r_natural is the distance in rescaled (natural) units"
+    return 4 * (-12 * dists_nat ** -13.0 + 6 * dists_nat ** -7.0
+    )
 
-def forces(particle_positions, particle_distances_arr):
+def forces2(particle_positions, particle_distances_arr, epsilon = epsilon):
     """return net force array for all particles
 
     Args:
@@ -40,6 +44,8 @@ def forces(particle_positions, particle_distances_arr):
         + 6 * particle_distances_arr[~diagonals] ** -7.0
     )
 
+    #forces_magnitudes[~diagonals] = 48 * epsilon * particle_distances_arr[~diagonals] ** -13.0 -
+
     net_force = np.zeros((N_particles, dimensions))
     repeated_force_magnitudes = np.repeat(
         forces_magnitudes[np.newaxis, :, :], dimensions, axis=0
@@ -49,6 +55,18 @@ def forces(particle_positions, particle_distances_arr):
 
     return net_force
 
+def forces(particle_positions, particle_distances_arr, epsilon = epsilon):
+    """Rewrite of above function. Implementation of 12-6 potential""" 
+    """U(r) = 4 (r**(-12) - r**(-6)) with r reduced distance"""
+    #TODO fix for 3d
+    particle_distances = sp.spatial.distance.cdist(particle_positions, particle_positions)
+    #print(particle_distances)
+    # Calculate force corresponding to distance
+    particle_pot_force = -1 *nabla_lennard_jones_natural(particle_distances)
+    particle_pot_force_sum = np.nansum(particle_pot_force, axis = 1)
+    test = np.repeat(particle_pot_force_sum[..., np.newaxis], 2, axis = -1)
+    #print(test.shape)
+    return test
 
 def normalize_diff_matrix(dimensions, N_particles, diff_matrix):
     """Normalize diff matrix to unit vectors
@@ -159,7 +177,7 @@ class verlet():
     def new_forces(self):
         self.position()
         particle_distances = sp.spatial.distance.cdist(self.new_positions, self.new_positions)
-        self.net_new_forces = forces(self.new_positions, particle_distances)
+        self.net_new_forces = forces2(self.new_positions, particle_distances)
         return 0;
 
     def velocity(self):
@@ -174,9 +192,10 @@ class verlet():
         
     def get_kinetic_energy(self):
         """Returns kinetic energy T = 1/2mv**2"""
+        #print(self.v[1, :])
         v_norm = np.linalg.norm(self.v, axis=1)
         self.kinetic_energy = 0.5 * self.m * v_norm**2
-        #print(self.kinetic_energy)
+        #print(self.kinetic_energy[0])
         return self.kinetic_energy
 
     def get_potential_energy(self):
@@ -205,7 +224,7 @@ def time_step_verlet(positions, velocities, h, L):
     """Same as above function except it used the Verlet algorithm"""
 
     particle_distances = sp.spatial.distance.cdist(positions, positions)
-    particle_forces = forces(positions, particle_distances)
+    particle_forces = forces2(positions, particle_distances)
 
     verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
     kinetic_energy = verlet_onestep.get_kinetic_energy()
@@ -232,7 +251,6 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
 
     for i in range(0, N_timesteps):
         particle_positions, particle_velocities, results_energies[i,:, 0], results_energies[i,:, 1] = time_step_verlet(particle_positions, particle_velocities, h, L) 
-        #print(results_energies[i, :, 0])
         results_positions[i,:,:] = particle_positions
         results_velocities[i,:,:] = particle_velocities
 
@@ -270,23 +288,24 @@ def animate_results(input_x, input_y, view_size = 10, frame_interval=100, traili
 
 
 h=0.01
-N = 10
+N = 2
 dim = 2
-max_time = 10
+max_time = 150
+#max_time = h * 100
 L = 20
-v_max = 0.01
+v_max = 0.1
 
 
 rng = np.random.default_rng(seed=test_seed)
-x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
-v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
+#x_0 = rng.uniform(low = -L/2, high = L/2, size = (N, dim))
+#v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 
 
 # print(x_0)
 # print(v_0)
 
-#x_0 = np.array([[-0.9 * L, 0.90 * L], [0.3 * L, -0.10 * L]])
-#v_0 = np.array([[0.0, -0.10], [-0.00, 0.10]])
+x_0 = np.array([[0.5 * L, 0.6 * L], [0.6 * L, 0.6 * L]])
+v_0 = np.array([[-0.09, 0.12], [0.09, 0.1]])
 
 # x_0 = np.array(
 #     [
@@ -296,16 +315,20 @@ v_0 = rng.uniform(low = -v_max, high = v_max, size = (N, dim))
 #     )
 # x_0 = x_0 - L/2
 # v_0 = np.array([[0.09, 0], [-0.09, 0]])
-loop_results_x, loop_results_v, loop_results_E = time_loop(x_0, v_0, h, max_time, L)
-x_0 = np.array([[0.51 * L, 0.4 * L], [0.49 * L, 0.3 * L]])
-v_0 = np.array([[0.09, 0], [-0.09*3, 0]])
+#x_0 = np.array([[0.5 * L, 0.6 * L], [0.6 * L, 0.6 * L], [0.3 * L, 0.1 * L]])
+#v_0 = np.array([[-0.09, 0.12], [0.09, 0.1], [-0.1, 0.05]])
 loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time, L)
 
-n_particles = np.shape(x_0)[0]
+
 # n-steps, n-particle, dimension
 #plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 # plt.plot(loop_results_x[:,:,0], loop_results_x[:,:,1], marker='x')
 
 
 
-zanimate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
+#animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], frame_interval = 10, view_size=0.6*L)
+
+plt.scatter(loop_results_x[:, 0, 0], loop_results_x[:, 0, 1], marker = ".")
+plt.scatter(loop_results_x[:, 1, 0], loop_results_x[:, 1, 1], marker = ".")
+#plt.scatter(loop_results_x[:, 2, 0], loop_results_x[:, 2, 1], marker = ".")
+plt.show()
