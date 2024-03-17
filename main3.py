@@ -55,9 +55,7 @@ def get_diff_and_dist(particle_positions, L, dimensions, N_particles):
     diff_matrix_min_image = (diff_matrix + L / 2) % L - L / 2
     particle_distances_arr = np.linalg.norm(diff_matrix_min_image, axis=0)
 
-    # norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix, particle_distances_arr)
-    norm_diff_matrix = normalize_diff_matrix(dimensions, N_particles, diff_matrix_min_image)
-    return particle_distances_arr, norm_diff_matrix
+    return particle_distances_arr, diff_matrix_min_image 
 
 
 def normalize_diff_matrix(dimensions, N_particles, diff_matrix):
@@ -164,7 +162,7 @@ class verlet:
 
     def __init__(self, x, v, h, m, net_forces, dimensions, n_particles, L):
         self.x = x
-        self.v = v
+        self.v = v  
         self.h = h
         self.m = m
         self.net_forces = net_forces
@@ -257,13 +255,14 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
     particle_velocities = initial_velocities
     results_positions = np.zeros((N_timesteps, N_particles, N_dimensions))
     results_velocities = np.zeros((N_timesteps, N_particles, N_dimensions))
+    results_diffs = np.zeros((N_timesteps, N_dimensions, N_particles, N_particles))
     results_energies = np.zeros(
         [N_timesteps, N_particles, 2]
     )  # 3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
     results_forces = np.zeros(
         [N_timesteps, N_particles, 2]
     )  # 3rd dimension 1 for T 2 for V so that E = T + V is np.sum(..., axis=2)
-    results_diffs = np.zeros((N_timesteps, N_particles,N_particles, N_dimensions))
+    print(np.shape(results_diffs))
 
     results_positions[0, :, :] = initial_positions
     results_velocities[0, :, :] = initial_velocities
@@ -281,13 +280,16 @@ def time_loop(initial_positions, initial_velocities, h, max_time, L):
         results_positions[i, :, :] = particle_positions
         results_velocities[i, :, :] = particle_velocities
 
-        particle_distances_arr, norm_diff_matrix = get_diff_and_dist(
+        particle_distances_arr, diff_matrix_min_image= get_diff_and_dist(
             particle_positions, L, N_dimensions, N_particles
         )
 
+        norm_diff_matrix = normalize_diff_matrix(N_dimensions, N_particles, diff_matrix_min_image)
+
+        results_diffs [i,:,:,:]=  diff_matrix_min_image
         results_forces[i, :, :] = forces(particle_distances_arr, norm_diff_matrix, L, N_dimensions)
 
-    return results_positions, results_velocities, results_energies, results_forces, norm_diff_matrix 
+    return results_positions, results_velocities, results_energies, results_forces, results_diffs
 
 
 def animate_results(input_x, input_y, view_size=10, frame_interval=100, trailing_frames=1):
@@ -348,7 +350,7 @@ def animate_quiver(
         positions_y[0, :],
         vec_x[0, :],
         vec_y[0, :],
-        # pivot="mid",
+        pivot="tail",
         # color="r",
     )
 
@@ -383,7 +385,7 @@ def animate_quiver(
     return
 
 
-h = 0.1
+h = 0.2
 N = 20
 dim = 2
 max_time = 100
@@ -405,13 +407,15 @@ v_max = 1
 
 x_0 = np.array(
     [
-        [0.3 * L, 0.20*L], #x1, y1
-        [0.7 * L, 0.20*L] #x2, y2
+        [0.3 * L, 0.25*L], #x1, y1
+        [0.4 * L, 0.25*L], #x1, y1
+        [0.7 * L, 0.15*L] #x2, y2
      ]
     )
 x_0 = x_0 - L/2
 v_0 = np.array([
     [0.09, 0.1],
+    [0.19, 0.1],
     [-0.09, 0.1]
     ])
 
@@ -431,14 +435,19 @@ print(f"{np.shape(loop_results_F)=}")
 
 #%%
 
-print(f"{np.shape(loop_results_x)=}")
+print(f"na loop {np.shape(loop_results_diff[:,0,1,0])=}")
+# diff vector of particle N with particle 1
+selected_diff = loop_results_diff[:,:,1,:]
+print(f'{np.linalg.norm(selected_diff, axis=2)=}')
+# selected_diff_y = loop_results_diff[:,0,1,1]
+
 # animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L)
 animate_quiver(
     loop_results_x[:, :, 0],
     loop_results_x[:, :, 1],
-    loop_results_F[:, :, 0],
-    loop_results_F[:, :, 1],
-    arrow_scaling=0.01,
+    selected_diff[:, 0],
+    selected_diff[:, 1],
+    arrow_scaling=1,
     frame_interval=1,
 )
 
