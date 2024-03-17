@@ -14,7 +14,7 @@ class Box:
     def step_forward_euler(self, h):
         self.positions = self.positions + h * self.velocities
         self.velocities = self.velocities + h * self.get_forces()
-        return
+        return 0;
 
     def step_forward_verlet(self, h, first_step=False):
         forces_current = np.copy(self.get_forces())
@@ -23,7 +23,8 @@ class Box:
         # calculate forces at new positions
         forces_lookahead = np.copy(self.get_forces())
         self.velocities = self.velocities + h / 2 * (forces_lookahead + forces_current)
-        return
+        self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1)**2
+        return 0;
 
     def get_connecting_vectors(self):
         diff_matrix = np.empty((self.n_dimensions, self.n_particles, self.n_particles))
@@ -75,7 +76,7 @@ class Box:
 
 class Results(object):
     def __init__(self):
-        pass
+        return
 
 
 def get_x_component(object):
@@ -92,7 +93,7 @@ class Simulation:
         self.n_dimensions = system.n_dimensions
         self.n_particles = system.n_particles
         self.results = Results()
-        return
+
 
     def run_simulation_euler(self, h=0.1, max_time=1):
         n_steps = int(max_time / h)
@@ -104,7 +105,7 @@ class Simulation:
             self.system.step_forward_euler(h)
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
-        return
+        return 0;
 
     def run_simulation_verlet(self, h=0.1, max_time=1, method="verlet"):
         n_steps = int(max_time / h)
@@ -122,6 +123,7 @@ class Simulation:
             stepping_function(h)
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
+        return 0;
 
 
 L = 20
