@@ -4,6 +4,7 @@ from visplot import *
 class Box:
     def __init__(self, particle_positions, particle_velocities, box_length):
         self.positions = particle_positions
+        self.previous_positions = particle_positions # is this fair?
         self.velocities = particle_velocities
         self.box_length = box_length
         self.n_particles = np.shape(particle_positions)[0]
@@ -12,6 +13,16 @@ class Box:
     def step_forward_euler(self, h):
         self.positions = self.positions + h*self.velocities
         self.velocities = self.velocities + h*self.get_forces()
+        return
+
+    def step_forward_verlet(self, h, first_step=False):
+        if first_step:
+            self.previous_positions = self.positions - h * self.velocities
+        else:
+            current_postisions = np.copy(self.positions)
+
+            self.positions  =  2 * self.positions - self.previous_positions + h**2 * self.get_forces()
+            self.previous_positions =  current_postisions
         return
 
         
@@ -51,9 +62,9 @@ class Box:
         connecting_vectors = self.get_connecting_vectors() 
         radial_distances = self.get_radial_distances(connecting_vectors)
         force_magnitudes = self.get_force_magnitudes(radial_distances) 
+        # normalize the vectors
         connecting_vectors = self.normalize_connecting_vectors(connecting_vectors)
 
-        #TODO normalization
         force_per_particle =  connecting_vectors * (np.repeat(force_magnitudes[np.newaxis, :, :], self.n_dimensions, axis=0))
         force_per_particle[np.isnan(force_per_particle)] = 0
 
@@ -80,16 +91,35 @@ class Simulation:
         self.results = Results()
         return
 
-    def run_simulation(self, h=0.1, max_time=1):
+    def run_simulation_euler(self, h=0.1, max_time=1):
         n_steps = int(max_time/h)
         self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities= np.empty((n_steps, self.n_particles, self.n_dimensions))
 
         for i in range(0, n_steps):
+            # self.system.step_forward_euler(h)
             self.system.step_forward_euler(h)
             self.results.positions[i,:,:] = self.system.positions
             self.results.velocities[i,:,:] = self.system.velocities
         return
+
+    def run_simulation_verlet(self, h=0.1, max_time=1):
+        n_steps = int(max_time/h)
+        self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
+        self.results.velocities= np.empty((n_steps, self.n_particles, self.n_dimensions))
+
+
+        self.system.step_forward_verlet(h, first_step = True)
+        self.results.positions[1,:,:] = self.system.positions
+        self.results.velocities[1,:,:] = self.system.velocities
+
+        for i in range(1, n_steps):
+            # self.system.step_forward_euler(h)
+            self.system.step_forward_verlet(h)
+            self.results.positions[i,:,:] = self.system.positions
+            self.results.velocities[i,:,:] = self.system.velocities
+        
+    
 
 
 L = 20
@@ -102,7 +132,7 @@ v_0 = np.array([[0.09, -0.00],
 
 testbox = Box(x_0, v_0, L )
 sim1 = Simulation(testbox)
-sim1.run_simulation(h=0.01, max_time=100)
+sim1.run_simulation_verlet(h=0.01, max_time=100)
 print((sim1.results.positions))
 print(get_x_component(sim1.results.positions))
 
