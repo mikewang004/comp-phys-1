@@ -178,7 +178,7 @@ class verlet():
     def new_forces(self):
         self.position()
         particle_distances = sp.spatial.distance.cdist(self.new_positions, self.new_positions)
-        self.net_new_forces = forces2(self.new_positions, particle_distances)
+        self.net_new_forces = forces(self.new_positions, particle_distances)
         return 0;
 
     def velocity(self):
@@ -225,7 +225,7 @@ def time_step_verlet(positions, velocities, h, L):
     """Same as above function except it used the Verlet algorithm"""
 
     particle_distances = sp.spatial.distance.cdist(positions, positions)
-    particle_forces = forces2(positions, particle_distances)
+    particle_forces = forces(positions, particle_distances)
 
     verlet_onestep = verlet(positions, velocities, h, 1, particle_forces)
     kinetic_energy = verlet_onestep.get_kinetic_energy()
