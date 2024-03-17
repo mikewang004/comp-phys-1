@@ -18,10 +18,10 @@ def lennard_jones_natural(dists_nat):
 
 def nabla_lennard_jones_natural(dists_nat):
     "Returns dau Lennard-Jones potential / dau r_natural as given. r_natural is the distance in rescaled (natural) units"
-    return 4 * (-12 * dists_nat ** -13.0 + 6 * dists_nat ** -7.0
+    return 4 * (12 * dists_nat ** -13.0 - 6 * dists_nat ** -7.0
     )
 
-def forces2(particle_positions, particle_distances_arr, epsilon = epsilon):
+def forces(particle_positions, particle_distances_arr, epsilon = epsilon):
     """return net force array for all particles
 
     Args:
@@ -55,7 +55,8 @@ def forces2(particle_positions, particle_distances_arr, epsilon = epsilon):
 
     return net_force
 
-def forces(particle_positions, particle_distances_arr, epsilon = epsilon):
+
+def forces2(particle_positions, particle_distances_arr, epsilon = epsilon):
     """Rewrite of above function. Implementation of 12-6 potential""" 
     """U(r) = 4 (r**(-12) - r**(-6)) with r reduced distance"""
     #TODO fix for 3d
@@ -305,7 +306,7 @@ rng = np.random.default_rng(seed=test_seed)
 # print(v_0)
 
 x_0 = np.array([[0.5 * L, 0.6 * L], [0.6 * L, 0.6 * L]])
-v_0 = np.array([[-0.09, 0.12], [0.09, 0.1]])
+v_0 = 6* np.array([[-0.09, 0.12], [0.09, 0.1]])
 
 # x_0 = np.array(
 #     [
@@ -326,9 +327,9 @@ loop_results_x, loop_results_v, loop_results_e = time_loop(x_0, v_0, h, max_time
 
 
 
-#animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], frame_interval = 10, view_size=0.6*L)
+animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], frame_interval = 10, view_size=0.6*L)
 
-plt.scatter(loop_results_x[:, 0, 0], loop_results_x[:, 0, 1], marker = ".")
-plt.scatter(loop_results_x[:, 1, 0], loop_results_x[:, 1, 1], marker = ".")
+#plt.scatter(loop_results_x[:, 0, 0], loop_results_x[:, 0, 1], marker = ".")
+#plt.scatter(loop_results_x[:, 1, 0], loop_results_x[:, 1, 1], marker = ".")
 #plt.scatter(loop_results_x[:, 2, 0], loop_results_x[:, 2, 1], marker = ".")
-plt.show()
+#plt.show()
