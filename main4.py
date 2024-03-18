@@ -138,7 +138,7 @@ class Simulation:
 
 L = 20
 h = 0.02
-max_time = 500
+max_time = 450
 
 x_0 = np.array([[-0.2 * L, 0.01 * L], [0.2 * L, -0.01 * L]])
 v_0 = np.array(
