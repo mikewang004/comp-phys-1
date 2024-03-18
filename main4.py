@@ -1,6 +1,8 @@
 import numpy as np
 from visplot import *
 
+def lennard_jones_potential(r_nat):
+    return 4 * (r_nat**-12 - r_nat**-6)
 
 class Box:
     def __init__(self, particle_positions, particle_velocities, box_length):
@@ -18,20 +20,17 @@ class Box:
 
     def step_forward_verlet(self, h, first_step=False):
         forces_current = np.copy(self.get_forces())
+        self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1)**2
+        self.potential_energies = self.get_potential_energies()
         # do a lookahead positions
         self.positions = self.positions + h * self.velocities + h**2 / 2 * self.get_forces()
         # calculate forces at new positions
         forces_lookahead = np.copy(self.get_forces()) 
         self.velocities = self.velocities + h / 2 * (forces_lookahead + forces_current)
-        self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1)**2
-        #self.potential_energies = self.potential_energies()
         return 0;
 
-    # def potential_energies(self):
-    #     # First calculate distances 
-
-    def apply_min_im_convention(self, diff_matrix):
-        return (diff_matrix+ L/2) % L - L/2
+    def get_potential_energies(self):
+        return np.nansum((lennard_jones_potential(self.radial_distances)), axis = 0)
 
     def get_connecting_vectors(self):
         diff_matrix = np.empty((self.n_dimensions, self.n_particles, self.n_particles))
@@ -63,10 +62,14 @@ class Box:
         forces_magnitudes = 4 * (-12 * radial_distances**-13 + 6 * radial_distances**-7)
         return forces_magnitudes
 
+    def apply_min_im_convention(self, diff_matrix):
+        return (diff_matrix + L/2) % L - L/2
+
     def get_forces(self):
         connecting_vectors = self.get_connecting_vectors()
         connecting_vectors = self.apply_min_im_convention(connecting_vectors)
         radial_distances = self.get_radial_distances(connecting_vectors)
+        self.radial_distances = radial_distances
         force_magnitudes = self.get_force_magnitudes(radial_distances)
 
         # normalize the vectors
@@ -131,14 +134,31 @@ class Simulation:
             stepping_function(h)
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
-            #self.results.energies[i, :, 0] = self.system.kinetic_energies
-            #self.results.energies[i, :, 1] = self.system.potential_energies
+            self.results.energies[i, :, 0] = self.system.kinetic_energies
+            #self.results.energies[i, :, 0] = 0.5 * np.linalg.norm(self.results.velocities[i, :, :], axis = 1)**2
+            self.results.energies[i, :, 1] = self.system.potential_energies
         return 0;
 
 
-L = 20
+def simulation(L, h, max_time, x_0, v_0, animate = False):
+    testbox1 = Box(x_0, v_0, L)
+    sim1 = Simulation(testbox1)
+    sim1.run_simulation_verlet(h=h, max_time=max_time, method="verlet")
+    #np.savetxt("test.csv", sim1.results.energies[:, 0, :])
+
+    if animate == True:
+        animate_results(
+            get_x_component(sim1.results.positions),
+            get_y_component(sim1.results.positions),
+            view_size=0.6 * L,
+            frame_skip_multiplier=10,
+            trailing_frames=100000,
+        )
+        plt.show()
+    return sim1;
+L = 10
 h = 0.02
-max_time = 550
+max_time = 150
 
 x_0 = np.array([[-0.2 * L, 0.01 * L], [0.2 * L, -0.01 * L]])
 v_0 = np.array(
@@ -148,15 +168,10 @@ v_0 = np.array(
     ]
 )
 
-testbox1 = Box(x_0, v_0, L)
-sim1 = Simulation(testbox1)
-sim1.run_simulation_verlet(h=h, max_time=max_time, method="verlet")
+def main():
+    simulation(L, h, max_time, x_0, v_0) #disable if working from simulation.py
+    print("Hello World!")
 
-animate_results(
-    get_x_component(sim1.results.positions),
-    get_y_component(sim1.results.positions),
-    view_size=0.6 * L,
-    frame_skip_multiplier=10,
-    trailing_frames=100000,
-)
-plt.show()
+
+if __name__ == "__main__":
+    main()
