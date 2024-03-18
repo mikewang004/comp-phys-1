@@ -1,25 +1,39 @@
 from main4 import *
 
-# Note for loop_results_e 2nd axis 0th index contains kinetic energy whereas
-# 1st index contains potential energy
+# Testing file for energy plots 
+# Note for sim.results.energies 
+# 0th dim encodes timestep, 1st particle number, 2nd: 
+# 0 is kinetic energy, 1 is potential energy
+L = 10
+h = 0.01
+max_time = 150
+
+x_0 = np.array([[0.3 * L, 0.51 * L], [0.7 * L, 0.49* L]])
+v_0 = np.array(
+    [
+        [0.09, -0.00],
+        [-0.09, 0.00],
+    ]
+)
+
+def main():
+    time_array = np.arange(0, max_time, int(max_time/h))
+    sim = simulation(L, h, max_time, x_0, v_0, False)
+    #plt.plot(np.linalg.norm(sim.results.velocities[:, 0, :], axis =1), label = "velocity, norm")
+    plt.plot(sim.results.energies[:, 0, 0], label ="kinetic")
+    plt.plot(sim.results.energies[:, 0, 1], label = "potential")
+    #plt.plot(np.sum(sim.results.energies[:, 0, :], axis = 1), label = "total")
+    plt.legend()
+    plt.title("energy")
+    plt.xlabel("time")
+    plt.ylabel("energy")
+    plt.show()
+
+if __name__ == "__main__":
+    main()
 
 
 
-time_array = np.arange(0, int(max_time/h))
-# Try energy plot for one particle 
-print(np.max(np.abs(loop_results_e[:, 0, 1])))
-
-plt.scatter(time_array, loop_results_e[:, 0, 0], label = "kinetic", marker=".")
-plt.scatter(time_array, np.abs(loop_results_e[:, 0, 1]), label = "potential", marker = ".")
-plt.scatter(time_array, np.sum(np.abs(loop_results_e[:, 0, :]),axis = 1), label = "total", marker = ".")
-#plt.scatter(time_array, loop_results_v[:, 1, 0], label = "velocity in x", marker=".")
-#plt.scatter(time_array, loop_results_v[:, 1, 1], label = "velocity in y", marker=".")
-#plt.scatter(time_array, np.linalg.norm(loop_results_v[:, 0, :], axis = 1), label = "velocity total", marker=".")
-plt.legend()
-plt.xlabel("time")
-plt.ylabel("energy or velocity (refer to label)")
-plt.title("Energy of one argon atom over time")
-plt.show()
 
 
 
