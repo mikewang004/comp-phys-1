@@ -21,10 +21,17 @@ class Box:
         # do a lookahead positions
         self.positions = self.positions + h * self.velocities + h**2 / 2 * self.get_forces()
         # calculate forces at new positions
-        forces_lookahead = np.copy(self.get_forces())
+        forces_lookahead = np.copy(self.get_forces()) 
         self.velocities = self.velocities + h / 2 * (forces_lookahead + forces_current)
         self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1)**2
+        #self.potential_energies = self.potential_energies()
         return 0;
+
+    # def potential_energies(self):
+    #     # First calculate distances 
+
+    def apply_min_im_convention(self, diff_matrix):
+        return (diff_matrix+ L/2) % L - L/2
 
     def get_connecting_vectors(self):
         diff_matrix = np.empty((self.n_dimensions, self.n_particles, self.n_particles))
@@ -33,7 +40,6 @@ class Box:
             c1 = np.repeat(axis_positions[:, np.newaxis], self.n_particles, axis=1)
             c2 = np.repeat(axis_positions[np.newaxis, :], self.n_particles, axis=0)
             diff_matrix[dim, :, :] = c1 - c2
-
         return diff_matrix
 
     def normalize_connecting_vectors(self, diff_matrix):
@@ -59,6 +65,7 @@ class Box:
 
     def get_forces(self):
         connecting_vectors = self.get_connecting_vectors()
+        connecting_vectors = self.apply_min_im_convention(connecting_vectors)
         radial_distances = self.get_radial_distances(connecting_vectors)
         force_magnitudes = self.get_force_magnitudes(radial_distances)
 
@@ -111,6 +118,7 @@ class Simulation:
         n_steps = int(max_time / h)
         self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((n_steps, self.n_particles, self.n_dimensions))
+        self.results.energies = np.empty((n_steps, self.n_particles, 2)) #2nd axis: 0 for kin. energy 1 for pot. energy
         if method == "euler":
             stepping_function = self.system.step_forward_euler
             print("we doin euler")
@@ -123,10 +131,14 @@ class Simulation:
             stepping_function(h)
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
+            #self.results.energies[i, :, 0] = self.system.kinetic_energies
+            #self.results.energies[i, :, 1] = self.system.potential_energies
         return 0;
 
 
-L = 20
+L = 10
+h = 0.02
+max_time = 500
 
 x_0 = np.array([[-0.2 * L, 0.01 * L], [0.2 * L, -0.01 * L]])
 v_0 = np.array(
@@ -138,7 +150,7 @@ v_0 = np.array(
 
 testbox1 = Box(x_0, v_0, L)
 sim1 = Simulation(testbox1)
-sim1.run_simulation_verlet(h=0.02, max_time=100, method="verlet")
+sim1.run_simulation_verlet(h=h, max_time=max_time, method="verlet")
 
 animate_results(
     get_x_component(sim1.results.positions),
