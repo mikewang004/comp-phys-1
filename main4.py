@@ -136,7 +136,7 @@ class Simulation:
         return 0;
 
 
-L = 10
+L = 20
 h = 0.02
 max_time = 500
 
