@@ -1,21 +1,30 @@
 import numpy as np
+from scipy import constants as spc
 from visplot import *
 
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
 
 class Box:
-    def __init__(self, particle_positions, particle_velocities, box_length):
-        self.positions = particle_positions
-        self.positions_lookahead = None  # is this fair?
-        self.velocities = particle_velocities
+    def __init__(self, particle_positions, particle_velocities, box_length, density = 4, temperature = 100):
+        #self.positions = particle_positions
+        self.density = density
+        self.temperature = temperature
         self.box_length = box_length
-        self.n_particles = np.shape(particle_positions)[0]
-        self.n_dimensions = np.shape(particle_positions)[1]
+        self.n_dimensions = 3
+        self.positions = self.generate_particle_positions()
+        self.positions_lookahead = None  # is this fair?
+        #self.velocities = particle_velocities
+        self.n_particles = np.shape(self.positions)[0]
+        self.n_dimensions = np.shape(self.positions)[1]
+        self.velocities = self.generate_velocities()
+
 
     def step_forward_euler(self, h):
         self.positions = self.positions + h * self.velocities
         self.velocities = self.velocities + h * self.get_forces()
+        self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1)**2
+        self.potential_energies = self.get_potential_energies() * 0.5 #Note imposed factor 0.5 for double counting
         return 0;
 
     def step_forward_verlet(self, h, first_step=False):
@@ -83,7 +92,31 @@ class Box:
         forces = np.sum(force_per_particle, axis=1)
         forces = np.transpose(forces)
         return forces
+    
+    def generate_velocities(self):
+        #velocities = np.zeros((self.n_particles, self.n_dimensions))
+        #velocities = np.exp(-1 * np.random.normal(size = (self.n_particles, self.n_dimensions)**2 / (2 * sp.constants.Boltzmann * self.temperature)))
+        sigma = np.sqrt(2 * spc.Boltzmann * self.temperature)
+        velocities = np.random.normal(scale = sigma, size = (self.n_particles, self.n_dimensions))
+        return velocities;
 
+    def generate_particle_positions(self):
+        """Generates fcc-unit cells. Note code assumes three dimensions."""
+        n_particles = 108 
+        cell_length = 4.0 / self.density**(1/3) # 4 particles in unit cell 
+        positions = np.zeros((n_particles, self.n_dimensions))
+        # Generate one cell
+        single_cell = np.array([[0, 0, 0], [0.5 * cell_length, 0.5 * cell_length, 0], [0, 0.5 * cell_length, 0.5 * cell_length], [0.5 * cell_length, 0, 0.5 * cell_length]])
+        # Generate full cube 
+        max_cube_counter = 3
+        position_counter = 0
+        a = 0
+        for i in range(0, max_cube_counter):
+            for j in range(0, max_cube_counter):
+                for k in range(0, max_cube_counter):
+                    positions[position_counter:position_counter+4,:] = single_cell + np.array([k * cell_length, j*cell_length, i*cell_length])
+                    position_counter = position_counter + 4
+        return positions
 
 class Results(object):
     def __init__(self):
@@ -103,6 +136,7 @@ class Simulation:
         self.system = system
         self.n_dimensions = system.n_dimensions
         self.n_particles = system.n_particles
+        self.temperature = 100 #K
         self.results = Results()
 
 
@@ -133,6 +167,7 @@ class Simulation:
         for i in range(0, n_steps):
             # self.system.step_forward_euler(h)
             stepping_function(h)
+            print(i)
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.energies[i, :, 0] = self.system.kinetic_energies
@@ -141,10 +176,11 @@ class Simulation:
         return 0;
 
 
-def simulation(L, h, max_time, x_0, v_0, animate = False):
+
+def simulation(L, h, max_time, x_0, v_0, animate = False, method = "verlet"):
     testbox1 = Box(x_0, v_0, L)
     sim1 = Simulation(testbox1)
-    sim1.run_simulation_verlet(h=h, max_time=max_time, method="verlet")
+    sim1.run_simulation_verlet(h=h, max_time=max_time, method=method)
     #np.savetxt("test.csv", sim1.results.energies[:, 0, :])
 
     if animate == True:
