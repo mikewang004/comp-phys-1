@@ -21,7 +21,7 @@ class Box:
     def step_forward_verlet(self, h, first_step=False):
         forces_current = np.copy(self.get_forces())
         self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1)**2
-        self.potential_energies = self.get_potential_energies()
+        self.potential_energies = self.get_potential_energies() * 0.5 #Note imposed factor 0.5 for double counting
         # do a lookahead positions
         self.positions = self.positions + h * self.velocities + h**2 / 2 * self.get_forces()
         # calculate forces at new positions
@@ -30,6 +30,7 @@ class Box:
         return 0;
 
     def get_potential_energies(self):
+        #print(lennard_jones_potential(self.radial_distances))
         return np.nansum((lennard_jones_potential(self.radial_distances)), axis = 0)
 
     def get_connecting_vectors(self):
@@ -160,9 +161,13 @@ L = 10
 h = 0.02
 max_time = 150
 
-x_0 = np.array([[-0.2 * L, 0.01 * L], [0.2 * L, -0.01 * L]])
+x_0 = np.array([[0.3 * L, 0.51 * L], [0.7 * L, 0.49* L], 
+    [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]
+    ])
 v_0 = np.array(
     [
+        [0.09, -0.00],
+        [-0.09, 0.00],
         [0.09, -0.00],
         [-0.09, 0.00],
     ]
