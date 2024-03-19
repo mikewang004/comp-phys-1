@@ -5,6 +5,9 @@ from visplot import *
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
 
+def get_e_target(n_particles, temperature):
+    return (n_particles-1) * 3/2 * temperature* spc.Boltzmann
+
 class Box:
     def __init__(self, particle_positions, particle_velocities, box_length, density = 4, temperature = 100):
         #self.positions = particle_positions
@@ -100,6 +103,19 @@ class Box:
         velocities = np.random.normal(scale = sigma, size = (self.n_particles, self.n_dimensions))
         return velocities;
 
+    def rescale_velocities(self):
+        #TODO does not work as expected
+        e_target = get_e_target(self.n_particles, self.temperature)
+        # Compare e_target to current kin en
+        total_kin_en = np.sum(self.kinetic_energies)
+        print(e_target)
+        print(total_kin_en)
+        if np.abs(total_kin_en - e_target) > 5 * np.std(e_target):
+            labda = np.sqrt(e_target/total_kin_en)
+            print(labda)
+            self.velocities = labda * self.velocities
+        return 0;
+
     def generate_particle_positions(self):
         """Generates fcc-unit cells. Note code assumes three dimensions."""
         n_particles = 108 
@@ -117,6 +133,8 @@ class Box:
                     positions[position_counter:position_counter+4,:] = single_cell + np.array([k * cell_length, j*cell_length, i*cell_length])
                     position_counter = position_counter + 4
         return positions
+
+
 
 class Results(object):
     def __init__(self):
@@ -167,18 +185,20 @@ class Simulation:
         for i in range(0, n_steps):
             # self.system.step_forward_euler(h)
             stepping_function(h)
-            print(i)
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             #self.results.energies[i, :, 0] = 0.5 * np.linalg.norm(self.results.velocities[i, :, :], axis = 1)**2
             self.results.energies[i, :, 1] = self.system.potential_energies
+            if i % 100 == 0:
+                print(i)
+                self.system.rescale_velocities()
         return 0;
 
 
 
-def simulation(L, h, max_time, x_0, v_0, animate = False, method = "verlet"):
-    testbox1 = Box(x_0, v_0, L)
+def simulation(L, h, max_time, x_0, v_0, animate = False, method = "verlet", density = 10, temperature = 100):
+    testbox1 = Box(x_0, v_0, L, density = density, temperature = temperature)
     sim1 = Simulation(testbox1)
     sim1.run_simulation_verlet(h=h, max_time=max_time, method=method)
     #np.savetxt("test.csv", sim1.results.energies[:, 0, :])
@@ -193,9 +213,9 @@ def simulation(L, h, max_time, x_0, v_0, animate = False, method = "verlet"):
         )
         plt.show()
     return sim1;
-L = 10
+L = 20
 h = 0.02
-max_time = 150
+max_time = 50
 
 x_0 = np.array([[0.3 * L, 0.51 * L], [0.7 * L, 0.49* L], 
     [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]

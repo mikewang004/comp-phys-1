@@ -22,7 +22,7 @@ v_0 = 10 * np.array(
 
 def main():
     time_array = np.arange(0, max_time, int(max_time/h))
-    sim = simulation(L, h, max_time, x_0, v_0, False, "euler")
+    sim = simulation(L, h, max_time, x_0, v_0, False, "euler", density = 0.05, temperature = 300)
     #plt.plot(np.linalg.norm(sim.results.velocities[:, 0, :], axis =1), label = "velocity, norm")
     plt.plot(np.nansum(sim.results.energies[:, :, 0], axis = 1), label ="kinetic")
     plt.plot(np.nansum(sim.results.energies[:, :, 1], axis=1), label = "potential")
@@ -31,6 +31,7 @@ def main():
     plt.title("total energy")
     plt.xlabel("time")
     plt.ylabel("energy")
+    #plt.ylim(-10, 500)
     plt.show()
 
 if __name__ == "__main__":
