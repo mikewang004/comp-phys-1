@@ -2,6 +2,8 @@ import numpy as np
 from scipy import constants as spc
 from visplot import *
 
+#TODO figure out what to do about spc Boltzmann
+
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
 
@@ -9,18 +11,25 @@ def get_e_target(n_particles, temperature):
     return (n_particles-1) * 3/2 * temperature* spc.Boltzmann
 
 class Box:
-    def __init__(self, particle_positions, particle_velocities, box_length, density = 4, temperature = 100):
+    def __init__(self, particle_positions= None, particle_velocities = None, density = 4, temperature = 100):
         #self.positions = particle_positions
         self.density = density
         self.temperature = temperature
-        self.box_length = box_length
         self.n_dimensions = 3
-        self.positions = self.generate_particle_positions()
+        if particle_positions is None:
+            self.positions = self.generate_particle_positions()
+        else:
+            self.positions = particle_positions
         self.positions_lookahead = None  # is this fair?
-        #self.velocities = particle_velocities
         self.n_particles = np.shape(self.positions)[0]
         self.n_dimensions = np.shape(self.positions)[1]
-        self.velocities = self.generate_velocities()
+        if particle_velocities is None:
+            self.velocities = self.generate_velocities()
+        else:
+            self.velocities = particle_velocities
+
+
+
 
 
     def step_forward_euler(self, h):
@@ -190,15 +199,15 @@ class Simulation:
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             #self.results.energies[i, :, 0] = 0.5 * np.linalg.norm(self.results.velocities[i, :, :], axis = 1)**2
             self.results.energies[i, :, 1] = self.system.potential_energies
-            if i % 100 == 0:
-                print(i)
-                self.system.rescale_velocities()
+            #if i % 100 == 0:
+                #print(i)
+                #self.system.rescale_velocities()
         return 0;
 
 
 
-def simulation(L, h, max_time, x_0, v_0, animate = False, method = "verlet", density = 10, temperature = 100):
-    testbox1 = Box(x_0, v_0, L, density = density, temperature = temperature)
+def simulation(L, h, max_time, x_0 = None, v_0 = None, animate = False, method = "verlet", density = 10, temperature = 100):
+    testbox1 = Box(x_0, v_0, density = density, temperature = temperature)
     sim1 = Simulation(testbox1)
     sim1.run_simulation_verlet(h=h, max_time=max_time, method=method)
     #np.savetxt("test.csv", sim1.results.energies[:, 0, :])
