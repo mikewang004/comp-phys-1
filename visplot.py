@@ -95,6 +95,14 @@ def animate_quiver(
 
     return
 
+    
+    
+def make_xyplot(x,y, xlabel = 'time (unitless)', ylabel='', plotname=''):
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.plot(x,y, label=plotname)
+
+
 # animate_results(loop_results_x[:,:,0], loop_results_x[:,:,1], view_size=0.6*L, trailing_frames = 1000)
 # animate_quiver(
 #     loop_results_x[:, :, 0],
