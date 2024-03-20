@@ -8,8 +8,8 @@ m_ar = 6.6e-26
 sigma = 3.405e-10
 epsilon = 1.654e-21
 #density = 0.3; temperature = 3.0;
-#density = 0.8; temperature = 1.0;
-density = 1.2; temperature = 10;
+density = 0.8; temperature = 1.0;
+#density = 1.2; temperature = 10;
 
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
@@ -28,7 +28,9 @@ class Box:
         particle_velocities=None,
         density=4,
         temperature=100,
+        box_length = 100
     ):
+        self.box_length = box_length
         self.density = density
         self.temperature = temperature
         self.n_dimensions = 3
@@ -127,7 +129,7 @@ class Box:
     def generate_velocities(self):
         # velocities = np.zeros((self.n_particles, self.n_dimensions))
         # velocities = np.exp(-1 * np.random.normal(size = (self.n_particles, self.n_dimensions)**2 / (2 * sp.constants.Boltzmann * self.temperature)))
-        sigma = np.sqrt(2 * spc.Boltzmann * self.temperature/ epsilon)
+        sigma = np.sqrt(2 * self.temperature * spc.Boltzmann/epsilon)
         velocities = np.random.normal(
             scale=sigma, size=(self.n_particles, self.n_dimensions)
         )

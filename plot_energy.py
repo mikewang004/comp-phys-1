@@ -7,13 +7,13 @@ from main4 import *
 # Recommended parameters as follows for resp. gas liquid solid:
 
 #density = 0.3; temperature = 3.0;
-#density = 0.8; temperature = 1.0;
+density = 0.8; temperature = 1.0;
 #density = 1.2; temperature = 0.5;
 # Eq energy according to Maja should be about 80  
 L = 200 #not relevant anymore
 h = 0.01
 max_time = 50
-#density = 0.1; temperature = 1000
+#density = 0.4; temperature = 1.424
 
 x_0 = np.array(
     [[0.3 * L, 0.51 * L], 
