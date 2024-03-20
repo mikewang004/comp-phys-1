@@ -4,11 +4,14 @@ from main4 import *
 # Note for sim.results.energies
 # 0th dim encodes timestep, 1st particle number, 2nd:
 # 0 is kinetic energy, 1 is potential energy
-L = 200
+# Recommended parameters as follows for resp. gas liquid solid:
+#density = 0.3; temperature = 3.0;
+#density = 0.8; temperature = 1.0;
+density = 1.2; temperature = 0.5;
+L = 200 #not relevant anymore
 h = 0.01
-max_time = 20
-density = 0.1
-temperature = 1000
+max_time = 50
+#density = 0.1; temperature = 1000
 
 x_0 = np.array(
     [[0.3 * L, 0.51 * L], 

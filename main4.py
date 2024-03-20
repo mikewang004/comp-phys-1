@@ -4,13 +4,18 @@ from visplot import *
 
 # TODO figure out what to do about spc Boltzmann
 
+m_ar = 6.6e-26
+sigma = 3.405e-10
+epsilon = 1.654e-21
 
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
 
 
 def get_e_target(n_particles, temperature):
-    return (n_particles - 1) * 3 / 2 * temperature * spc.Boltzmann
+    return (n_particles - 1) * (3 / 2) * temperature * spc.Boltzmann/epsilon
+
+
 
 
 class Box:
@@ -21,7 +26,6 @@ class Box:
         density=4,
         temperature=100,
     ):
-        # self.positions = particle_positions
         self.density = density
         self.temperature = temperature
         self.n_dimensions = 3
@@ -131,11 +135,12 @@ class Box:
         # TODO does not work as expected
         e_target = get_e_target(self.n_particles, self.temperature)
         # Compare e_target to current kin en
-        total_kin_en = np.sum(self.kinetic_energies)
+        total_kin_en = np.nansum(self.kinetic_energies)
+        print("e_target resp total kin en as follows")
         print(e_target)
         print(total_kin_en)
-        if np.abs(total_kin_en - e_target) > 5 * np.std(e_target):
-            labda = np.sqrt(e_target / total_kin_en)
+        if np.abs(total_kin_en - e_target) > 10 * np.std(e_target):
+            labda = np.sqrt(e_target*2 / total_kin_en)
             print(labda)
             self.velocities = labda * self.velocities
         return 0
@@ -169,6 +174,7 @@ class Box:
         return positions
 
 
+
 class Results(object):
     def __init__(self):
         return
@@ -187,7 +193,6 @@ class Simulation:
         self.system = system
         self.n_dimensions = system.n_dimensions
         self.n_particles = system.n_particles
-        self.temperature = 100  # K
         self.results = Results()
 
     def run_simulation_euler(self, h=0.1, max_time=1):
@@ -222,11 +227,11 @@ class Simulation:
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.energies[i, :, 0] = self.system.kinetic_energies
-            # self.results.energies[i, :, 0] = 0.5 * np.linalg.norm(self.results.velocities[i, :, :], axis = 1)**2
             self.results.energies[i, :, 1] = self.system.potential_energies
-            # if i % 100 == 0:
-            # print(i)
-            # self.system.rescale_velocities()
+            if i % 500 == 0:
+                print(i)
+                #TODO fix self system rescale velocities
+                #self.system.rescale_velocities()
         return 0
 
 
@@ -279,7 +284,7 @@ v_0 = np.array(
 
 
 def main():
-    simulation(L, h, max_time, x_0, v_0)  # disable if working from simulation.py
+    #simulation(L, h, max_time, x_0, v_0)  # disable if working from simulation.py
     print("Hello World!")
 
 

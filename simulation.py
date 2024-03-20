@@ -15,7 +15,7 @@ v_0 = np.array(
 )
 
 def main():
-    sim = simulation(L, h, max_time, x_0, v_0, True) #disable if working from simulation.py
+    sim = simulation(L, h, max_time, x_0, v_0, True)
 
 if __name__ == "__main__":
     main()
