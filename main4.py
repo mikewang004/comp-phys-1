@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import constants as spc
 from visplot import *
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 # TODO figure out what to do about spc Boltzmann
 
@@ -16,33 +18,27 @@ def lennard_jones_potential(r_nat):
 
 
 def get_e_target(n_particles, temperature):
-    return (n_particles - 1) * (3 / 2) * temperature * spc.Boltzmann/epsilon
-
-
+    return (n_particles - 1) * (3 / 2) * temperature * spc.Boltzmann / epsilon
 
 
 class Box:
     def __init__(
         self,
+        box_length=1,
         particle_positions=None,
         particle_velocities=None,
         density=4,
         temperature=100,
     ):
         self.density = density
+        self.box_length = box_length
         self.temperature = temperature
-        self.n_dimensions = 3
-        if particle_positions is None:
-            self.positions = self.generate_particle_positions()
-        else:
-            self.positions = particle_positions
+        self.positions = particle_positions
+        self.velocities = particle_velocities
         self.positions_lookahead = None  # is this fair?
         self.n_particles = np.shape(self.positions)[0]
         self.n_dimensions = np.shape(self.positions)[1]
-        if particle_velocities is None:
-            self.velocities = self.generate_velocities()
-        else:
-            self.velocities = particle_velocities
+        return
 
     def step_forward_euler(self, h):
         self.positions = self.positions + h * self.velocities
@@ -53,7 +49,7 @@ class Box:
         )  # Note imposed factor 0.5 for double counting
         return 0
 
-    def step_forward_verlet(self, h, first_step=False):
+    def step_forward_verlet(self, h):
         forces_current = np.copy(self.get_forces())
         self.kinetic_energies = 0.5 * np.linalg.norm(self.velocities, axis=1) ** 2
         self.potential_energies = (
@@ -69,7 +65,6 @@ class Box:
         return 0
 
     def get_potential_energies(self):
-        # print(lennard_jones_potential(self.radial_distances))
         return np.nansum((lennard_jones_potential(self.radial_distances)), axis=0)
 
     def get_connecting_vectors(self):
@@ -82,7 +77,6 @@ class Box:
         return diff_matrix
 
     def normalize_connecting_vectors(self, diff_matrix):
-
         # sum the squares of elements across all dimensions
         diff_matrix_norm = np.empty((self.n_particles, self.n_particles))
         norm = np.linalg.norm(diff_matrix, axis=0)
@@ -106,6 +100,22 @@ class Box:
 
     def apply_min_im_convention(self, diff_matrix):
         return (diff_matrix + L / 2) % L - L / 2
+
+    def apply_bcs(self):
+        """Apply periodic boundry conditions by subtracting L in the 'violating' components
+        Args:
+            posititions (array): position array
+            velocities (array): velocities array
+        """
+        self.positions[self.positions > self.box_length / 2] = (
+            (self.positions[self.positions > self.box_length / 2] + self.box_length / 2)
+            % self.box_length
+        ) - self.box_length / 2
+        self.positions[self.positions < -self.box_length / 2] = (
+            (self.positions[self.positions < -self.box_length / 2] - self.box_length / 2)
+            % self.box_length
+        ) - self.box_length / 2
+        return 0
 
     def get_forces(self):
         connecting_vectors = self.get_connecting_vectors()
@@ -143,7 +153,7 @@ class Box:
         print(e_target)
         print(total_kin_en)
         if np.abs(total_kin_en - e_target) > 10 * np.std(e_target):
-            labda = np.sqrt(e_target*2 / total_kin_en)
+            labda = np.sqrt(e_target * 2 / total_kin_en)
             print(labda)
             self.velocities = labda * self.velocities
         return 0
@@ -203,20 +213,9 @@ class Simulation:
         self.n_dimensions = system.n_dimensions
         self.n_particles = system.n_particles
         self.results = Results()
+        self.stepping_function = self.system.step_forward_verlet
 
-    def run_simulation_euler(self, h=0.1, max_time=1):
-        n_steps = int(max_time / h)
-        self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
-        self.results.velocities = np.empty((n_steps, self.n_particles, self.n_dimensions))
-
-        for i in range(0, n_steps):
-            # self.system.step_forward_euler(h)
-            self.system.step_forward_euler(h)
-            self.results.positions[i, :, :] = self.system.positions
-            self.results.velocities[i, :, :] = self.system.velocities
-        return 0
-
-    def run_simulation_verlet(self, h=0.1, max_time=1, method="verlet"):
+    def run_simulation(self, h=0.1, max_time=1, method="verlet"):
         n_steps = int(max_time / h)
         self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((n_steps, self.n_particles, self.n_dimensions))
@@ -225,64 +224,75 @@ class Simulation:
         )  # 2nd axis: 0 for kin. energy 1 for pot. energy
         self.results.pressure = np.empty((n_steps, 2))
         if method == "euler":
-            stepping_function = self.system.step_forward_euler
-            print("we doin euler")
+            self.stepping_function = self.system.step_forward_euler
         else:
-            stepping_function = self.system.step_forward_verlet
-            print("we doin verlet")
+            self.stepping_function = self.system.step_forward_verlet
 
-        for i in range(0, n_steps):
-            # self.system.step_forward_euler(h)
-            stepping_function(h)
+        for i in tqdm(range(0, n_steps), desc="runnin"):
+            self.stepping_function(h)
+            self.system.apply_bcs()
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             self.results.energies[i, :, 1] = self.system.potential_energies
             self.results.pressure[i, 0] = self.system.get_pressure_avg_term()
-            if i % 500 == 0:
-                print(i)
-                #TODO fix self system rescale velocities
-                self.system.rescale_velocities()
+            # if i % 500 == 0:
+            #     # print(i)
+            #     #TODO fix self system rescale velocities
+            #     self.system.rescale_velocities()
+
+        # make a time array for easy plotting
+        self.results.time = np.linspace(0, n_steps*h, num=n_steps)
+
                 
 
+    def get_total_system_kin_energy(self):
+        return np.nansum(self.results.energies[:, :, 0], axis=1)
 
-def simulation(
-    L,
-    h,
-    max_time,
-    x_0=None,
-    v_0=None,
-    animate=False,
-    method="verlet",
-    density=10,
-    temperature=100,
-):
-    testbox1 = Box(x_0, v_0, density=density, temperature=temperature)
-    sim1 = Simulation(testbox1)
-    sim1.run_simulation_verlet(h=h, max_time=max_time, method=method)
-    # np.savetxt("test.csv", sim1.results.energies[:, 0, :])
+    def get_total_system_pot_energy(self):
+        return np.nansum(self.results.energies[:, :, 1], axis=1)
 
-    if animate == True:
-        animate_results(
-            get_x_component(sim1.results.positions),
-            get_y_component(sim1.results.positions),
-            view_size=0.6 * L,
-            frame_skip_multiplier=10,
-            trailing_frames=100000,
-        )
+    def animate_sim_results(self, frame_skip_multiplier=1):
+        if self.n_dimensions == 2:
+            animate_results(
+                get_x_component(self.results.positions),
+                get_y_component(self.results.positions),
+                view_size=1.0 * self.system.box_length,
+                frame_skip_multiplier=frame_skip_multiplier,
+                trailing_frames=100000,
+            )
+        else:
+            print('3d plotting not yet supported')
+
+    def plot_system_energy(self, which='all'):
+        kin = self.get_total_system_kin_energy()
+        pot = self.get_total_system_pot_energy()
+        total = kin + pot
+        plt.figure()
+        if which=='all':
+            make_xyplot(self.results.time, kin, ylabel='kinetic energy')
+            make_xyplot(self.results.time, pot, ylabel='potential energy')
+            make_xyplot(self.results.time, total, ylabel='total')
+        elif which=='total':
+            make_xyplot(self.results.time, total, ylabel='total')
+        else:
+            pass
+
         plt.show()
-    return sim1
+
+
+    
 
 
 L = 20
-h = 0.02
+h = 0.01
 max_time = 50
+method = "verlet"
+density = 10
+temperature = 100
 
 x_0 = np.array(
-    [[0.3 * L, 0.51 * L], 
-     [0.7 * L, 0.49 * L], 
-     [0.1 * L, 0.9 * L], 
-     [0.4 * L, 0.1 * L]]
+    [[0.3 * L, 0.51 * L], [0.7 * L, 0.49 * L], [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]]
 )
 v_0 = np.array(
     [
@@ -292,10 +302,23 @@ v_0 = np.array(
         [-0.09, 0.00],
     ]
 )
+testbox1 = Box(
+    box_length=L,
+    particle_positions=x_0,
+    particle_velocities=v_0,
+    density=density,
+    temperature=temperature,
+)
+sim1 = Simulation(testbox1)
+# np.savetxt("test.csv", sim1.results.energies[:, 0, :])
 
 
 def main():
-    simulation(L, h, max_time, x_0, v_0, density = density, temperature = temperature)  # disable if working from simulation.py
+    sim1.run_simulation(h=h, max_time=max_time, method=method)
+    # sim1.animate_sim_results(frame_skip_multiplier=10)
+    # a = sim1.get_total_system_kin_energy()
+    # print(f'{a=}')
+    sim1.plot_system_energy( which='total')
     print("Hello World!")
 
 
