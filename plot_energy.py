@@ -33,7 +33,7 @@ v_0 = 10 * np.array(
 
 def main():
     time_array = np.arange(0, max_time, int(max_time / h))
-    sim = simulation(
+    sim = Simulation(
         L,
         h,
         max_time,

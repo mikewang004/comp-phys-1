@@ -342,16 +342,9 @@ def main():
     sim1.run_simulation(h=h, max_time=max_time, method=method)
     sim1.animate_sim_results(frame_skip_multiplier=1)
     # a = sim1.get_total_system_kin_energy()
-    # pressure_results = sim1.results.pressure
-    # print(f'{sim1.results.positions=}')
-    # time_array = sim1.results.time
-    # plt.figure()
-    # plt.plot(time_array, pressure_results)
-    # plt.show()
-    # # print(sim1.results.pressure)
-    # sim1.plot_system_energy(which="all")
-    # # sim1.plot_system_energy(which="total")
-    # print("Hello World!")
+    # print(f'{a=}')
+    sim1.plot_system_energy( which='all')
+    print("Hello World!")
 
 
 if __name__ == "__main__":
