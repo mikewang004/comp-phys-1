@@ -12,7 +12,7 @@ epsilon = 1.654e-21
 # density = 0.3; temperature = 3.0;
 # density = 0.8; temperature = 1.0;
 density = 1.2
-temperature = 10
+temperature = 1
 
 
 def lennard_jones_potential(r_nat):
@@ -31,7 +31,6 @@ class Box:
         particle_velocities=None,
         density=4,
         temperature=100,
-        box_length = 100
     ):
         self.box_length = box_length
         self.density = density
@@ -170,9 +169,12 @@ class Box:
         """Generates fcc-unit cells. Note code assumes three dimensions."""
         self.n_dimensions = 3
         self.n_particles = 108
-        cell_length = 4.0 / self.density ** (1 / 3)  # 4 particles in unit cell
-        pattern_dimensions = 3
-        self.positions = np.zeros((self.n_particles, pattern_dimensions))
+        max_cube_counter = 3
+        atoms_per_unit_cell = 4
+        # cell_length = 4.0 / self.density ** (1 / 3)  # 4 particles in unit cell
+        cell_length = self.box_length / max_cube_counter # 3 
+
+        self.positions = np.zeros((self.n_particles, self.n_dimensions))
         # Generate one cell
         single_cell = np.array(
             [
@@ -183,9 +185,7 @@ class Box:
             ]
         )
         # Generate full cube
-        max_cube_counter = 3
         position_counter = 0
-        atoms_per_unit_cell = 4
         a = 0
         for i in range(0, max_cube_counter):
             for j in range(0, max_cube_counter):
@@ -220,6 +220,8 @@ def get_x_component(object):
 def get_y_component(object):
     return object[:, :, 1]
 
+def get_z_component(object):
+    return object[:, :, 2]
 
 class Simulation:
     def __init__(self, system):
@@ -228,10 +230,10 @@ class Simulation:
         self.stepping_function = self.system.step_forward_verlet
 
     def run_simulation(self, h=0.1, max_time=1, method="verlet"):
-
         self.n_dimensions = self.system.n_dimensions
         self.n_particles = self.system.n_particles
         n_steps = int(max_time / h)
+
         self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.energies = np.empty(
@@ -276,7 +278,15 @@ class Simulation:
                 trailing_frames=100000,
             )
         else:
-            print("3d plotting not yet supported")
+            print("plotting projection in the xy plane")
+            animate_results3d(
+                get_x_component(self.results.positions),
+                get_y_component(self.results.positions),
+                get_z_component(self.results.positions),
+                view_size=1.0 * self.system.box_length,
+                frame_skip_multiplier=frame_skip_multiplier,
+                trailing_frames=100000,
+            )
 
     def plot_system_energy(self, which="all"):
         kin = self.get_total_system_kin_energy()
@@ -296,23 +306,23 @@ class Simulation:
 
 
 L = 20
-h = 0.01
-max_time = 50
+h = 0.1
+max_time = 200 * h
 method = "verlet"
 density = 10
 temperature = 100
 
-x_0 = np.array(
-    [[0.3 * L, 0.51 * L], [0.7 * L, 0.49 * L], [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]]
-)
-v_0 = np.array(
-    [
-        [0.09, -0.00],
-        [-0.09, 0.00],
-        [0.09, -0.00],
-        [-0.09, 0.00],
-    ]
-)
+# x_0 = np.array(
+#     [[0.3 * L, 0.51 * L], [0.7 * L, 0.49 * L], [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]]
+# )
+# v_0 = np.array(
+#     [
+#         [0.09, -0.00],
+#         [-0.09, 0.00],
+#         [0.09, -0.00],
+#         [-0.09, 0.00],
+#     ]
+# )
 testbox1 = Box(
     box_length=L,
     density=density,
@@ -330,16 +340,16 @@ def main():
     # print(f'{np.shape(sim1.system.velocities)=}')
     print('vels')
     sim1.run_simulation(h=h, max_time=max_time, method=method)
-    # sim1.animate_sim_results(frame_skip_multiplier=10)
+    sim1.animate_sim_results(frame_skip_multiplier=1)
     # a = sim1.get_total_system_kin_energy()
-    pressure_results = sim1.results.pressure
-    print(f'{sim1.results.positions=}')
-    time_array = sim1.results.time
-    plt.figure()
-    plt.plot(time_array, pressure_results)
-    plt.show()
-    # print(sim1.results.pressure)
-    sim1.plot_system_energy(which="all")
+    # pressure_results = sim1.results.pressure
+    # print(f'{sim1.results.positions=}')
+    # time_array = sim1.results.time
+    # plt.figure()
+    # plt.plot(time_array, pressure_results)
+    # plt.show()
+    # # print(sim1.results.pressure)
+    # sim1.plot_system_energy(which="all")
     # # sim1.plot_system_energy(which="total")
     # print("Hello World!")
 

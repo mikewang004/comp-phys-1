@@ -96,6 +96,24 @@ def animate_quiver(
     return
 
     
+
+def animate_results3d(input_x, input_y, input_z, view_size=10, frame_interval=10, trailing_frames=1, frame_skip_multiplier = 1):
+
+    def update_graph(num):
+        graph._offsets3d = (input_x[num], input_y[num], input_z[num])
+        title.set_text('3D Test, time={}'.format(num))
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    title = ax.set_title('3D Test')
+
+    graph = ax.scatter(input_x, input_y, input_z)
+
+    ani = animation.FuncAnimation(fig, update_graph, 19, 
+                               interval=40, blit=False)
+
+    plt.show()
     
 def make_xyplot(x,y, xlabel = 'time (unitless)', ylabel='', plotname=''):
     plt.xlabel(xlabel)
