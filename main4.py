@@ -7,6 +7,9 @@ from visplot import *
 m_ar = 6.6e-26
 sigma = 3.405e-10
 epsilon = 1.654e-21
+#density = 0.3; temperature = 3.0;
+#density = 0.8; temperature = 1.0;
+density = 1.2; temperature = 10;
 
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
@@ -107,14 +110,13 @@ class Box:
     def get_forces(self):
         connecting_vectors = self.get_connecting_vectors()
         connecting_vectors = self.apply_min_im_convention(connecting_vectors)
-        radial_distances = self.get_radial_distances(connecting_vectors)
-        self.radial_distances = radial_distances
-        force_magnitudes = self.get_force_magnitudes(radial_distances)
+        self.radial_distances = self.get_radial_distances(connecting_vectors)
+        self.force_magnitudes = self.get_force_magnitudes(self.radial_distances)
 
         # normalize the vectors
         connecting_vectors = self.normalize_connecting_vectors(connecting_vectors)
         force_per_particle = connecting_vectors * (
-            np.repeat(force_magnitudes[np.newaxis, :, :], self.n_dimensions, axis=0)
+            np.repeat(self.force_magnitudes[np.newaxis, :, :], self.n_dimensions, axis=0)
         )
         force_per_particle[np.isnan(force_per_particle)] = 0
 
@@ -125,10 +127,11 @@ class Box:
     def generate_velocities(self):
         # velocities = np.zeros((self.n_particles, self.n_dimensions))
         # velocities = np.exp(-1 * np.random.normal(size = (self.n_particles, self.n_dimensions)**2 / (2 * sp.constants.Boltzmann * self.temperature)))
-        sigma = np.sqrt(2 * spc.Boltzmann * self.temperature)
+        sigma = np.sqrt(2 * spc.Boltzmann * self.temperature/ epsilon)
         velocities = np.random.normal(
             scale=sigma, size=(self.n_particles, self.n_dimensions)
         )
+
         return velocities
 
     def rescale_velocities(self):
@@ -173,7 +176,13 @@ class Box:
                     position_counter = position_counter + 4
         return positions
 
-
+    def get_pressure_avg_term(self):
+        # First calculate average over all pairs 
+        avg_term = 0
+        for i in range(1, int(self.force_magnitudes.shape[0]/2)):
+            avg_term = avg_term + np.trace(self.radial_distances, offset = i) * np.trace(self.force_magnitudes, offset = i)
+        avg_term = 0.5 * avg_term
+        return avg_term
 
 class Results(object):
     def __init__(self):
@@ -214,6 +223,7 @@ class Simulation:
         self.results.energies = np.empty(
             (n_steps, self.n_particles, 2)
         )  # 2nd axis: 0 for kin. energy 1 for pot. energy
+        self.results.pressure = np.empty((n_steps, 2))
         if method == "euler":
             stepping_function = self.system.step_forward_euler
             print("we doin euler")
@@ -228,11 +238,12 @@ class Simulation:
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             self.results.energies[i, :, 1] = self.system.potential_energies
+            self.results.pressure[i, 0] = self.system.get_pressure_avg_term()
             if i % 500 == 0:
                 print(i)
                 #TODO fix self system rescale velocities
-                #self.system.rescale_velocities()
-        return 0
+                self.system.rescale_velocities()
+                
 
 
 def simulation(
@@ -284,7 +295,7 @@ v_0 = np.array(
 
 
 def main():
-    #simulation(L, h, max_time, x_0, v_0)  # disable if working from simulation.py
+    simulation(L, h, max_time, x_0, v_0, density = density, temperature = temperature)  # disable if working from simulation.py
     print("Hello World!")
 
 
