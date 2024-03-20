@@ -9,9 +9,11 @@ from tqdm import tqdm
 m_ar = 6.6e-26
 sigma = 3.405e-10
 epsilon = 1.654e-21
-#density = 0.3; temperature = 3.0;
-density = 0.8; temperature = 1.0;
-#density = 1.2; temperature = 10;
+# density = 0.3; temperature = 3.0;
+# density = 0.8; temperature = 1.0;
+density = 1.2
+temperature = 10
+
 
 def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
@@ -38,8 +40,12 @@ class Box:
         self.positions = particle_positions
         self.velocities = particle_velocities
         self.positions_lookahead = None  # is this fair?
-        self.n_particles = np.shape(self.positions)[0]
-        self.n_dimensions = np.shape(self.positions)[1]
+        if particle_positions == None:
+            self.n_particles = None
+            self.n_dimensions = None
+        else:
+            self.n_particles = np.shape(self.positions)[0]
+            self.n_dimensions = np.shape(self.positions)[1]
         return
 
     def step_forward_euler(self, h):
@@ -139,12 +145,12 @@ class Box:
     def generate_velocities(self):
         # velocities = np.zeros((self.n_particles, self.n_dimensions))
         # velocities = np.exp(-1 * np.random.normal(size = (self.n_particles, self.n_dimensions)**2 / (2 * sp.constants.Boltzmann * self.temperature)))
-        sigma = np.sqrt(2 * self.temperature * spc.Boltzmann/epsilon)
-        velocities = np.random.normal(
+        sigma = np.sqrt(2 * spc.Boltzmann * self.temperature / epsilon)
+        self.velocities = np.random.normal(
             scale=sigma, size=(self.n_particles, self.n_dimensions)
         )
 
-        return velocities
+        return 0
 
     def rescale_velocities(self):
         # TODO does not work as expected
@@ -162,9 +168,11 @@ class Box:
 
     def generate_particle_positions(self):
         """Generates fcc-unit cells. Note code assumes three dimensions."""
-        n_particles = 108
+        self.n_dimensions = 3
+        self.n_particles = 108
         cell_length = 4.0 / self.density ** (1 / 3)  # 4 particles in unit cell
-        positions = np.zeros((n_particles, self.n_dimensions))
+        pattern_dimensions = 3
+        self.positions = np.zeros((self.n_particles, pattern_dimensions))
         # Generate one cell
         single_cell = np.array(
             [
@@ -177,24 +185,28 @@ class Box:
         # Generate full cube
         max_cube_counter = 3
         position_counter = 0
+        atoms_per_unit_cell = 4
         a = 0
         for i in range(0, max_cube_counter):
             for j in range(0, max_cube_counter):
                 for k in range(0, max_cube_counter):
-                    positions[position_counter : position_counter + 4, :] = (
+                    self.positions[position_counter : position_counter + atoms_per_unit_cell , :] = (
                         single_cell
                         + np.array([k * cell_length, j * cell_length, i * cell_length])
                     )
-                    position_counter = position_counter + 4
-        return positions
+                    position_counter = position_counter + atoms_per_unit_cell 
+        return self.positions
 
     def get_pressure_avg_term(self):
-        # First calculate average over all pairs 
+        # First calculate average over all pairs
         avg_term = 0
-        for i in range(1, int(self.force_magnitudes.shape[0]/2)):
-            avg_term = avg_term + np.trace(self.radial_distances, offset = i) * np.trace(self.force_magnitudes, offset = i)
+        for i in range(1, int(self.force_magnitudes.shape[0] / 2)):
+            avg_term = avg_term + np.trace(self.radial_distances, offset=i) * np.trace(
+                self.force_magnitudes, offset=i
+            )
         avg_term = 0.5 * avg_term
         return avg_term
+
 
 class Results(object):
     def __init__(self):
@@ -212,12 +224,13 @@ def get_y_component(object):
 class Simulation:
     def __init__(self, system):
         self.system = system
-        self.n_dimensions = system.n_dimensions
-        self.n_particles = system.n_particles
         self.results = Results()
         self.stepping_function = self.system.step_forward_verlet
 
     def run_simulation(self, h=0.1, max_time=1, method="verlet"):
+
+        self.n_dimensions = self.system.n_dimensions
+        self.n_particles = self.system.n_particles
         n_steps = int(max_time / h)
         self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((n_steps, self.n_particles, self.n_dimensions))
@@ -225,6 +238,7 @@ class Simulation:
             (n_steps, self.n_particles, 2)
         )  # 2nd axis: 0 for kin. energy 1 for pot. energy
         self.results.pressure = np.empty((n_steps, 2))
+        print(f'{np.shape(self.results.positions) =}')
         if method == "euler":
             self.stepping_function = self.system.step_forward_euler
         else:
@@ -244,9 +258,7 @@ class Simulation:
             #     self.system.rescale_velocities()
 
         # make a time array for easy plotting
-        self.results.time = np.linspace(0, n_steps*h, num=n_steps)
-
-                
+        self.results.time = np.linspace(0, n_steps * h, num=n_steps)
 
     def get_total_system_kin_energy(self):
         return np.nansum(self.results.energies[:, :, 0], axis=1)
@@ -264,26 +276,23 @@ class Simulation:
                 trailing_frames=100000,
             )
         else:
-            print('3d plotting not yet supported')
+            print("3d plotting not yet supported")
 
-    def plot_system_energy(self, which='all'):
+    def plot_system_energy(self, which="all"):
         kin = self.get_total_system_kin_energy()
         pot = self.get_total_system_pot_energy()
         total = kin + pot
         plt.figure()
-        if which=='all':
-            make_xyplot(self.results.time, kin, ylabel='kinetic energy')
-            make_xyplot(self.results.time, pot, ylabel='potential energy')
-            make_xyplot(self.results.time, total, ylabel='total')
-        elif which=='total':
-            make_xyplot(self.results.time, total, ylabel='total')
+        if which == "all":
+            make_xyplot(self.results.time, kin, ylabel="kinetic energy")
+            make_xyplot(self.results.time, pot, ylabel="potential energy")
+            make_xyplot(self.results.time, total, ylabel="total")
+        elif which == "total":
+            make_xyplot(self.results.time, total, ylabel="total")
         else:
             pass
 
         plt.show()
-
-
-    
 
 
 L = 20
@@ -306,8 +315,6 @@ v_0 = np.array(
 )
 testbox1 = Box(
     box_length=L,
-    particle_positions=x_0,
-    particle_velocities=v_0,
     density=density,
     temperature=temperature,
 )
@@ -316,12 +323,25 @@ sim1 = Simulation(testbox1)
 
 
 def main():
+    sim1.system.generate_particle_positions()
+    sim1.system.generate_velocities()
+    print(f'{sim1.system.n_particles=}')
+    print(f'{sim1.system.n_dimensions=}')
+    # print(f'{np.shape(sim1.system.velocities)=}')
+    print('vels')
     sim1.run_simulation(h=h, max_time=max_time, method=method)
     # sim1.animate_sim_results(frame_skip_multiplier=10)
     # a = sim1.get_total_system_kin_energy()
-    # print(f'{a=}')
-    sim1.plot_system_energy( which='total')
-    print("Hello World!")
+    pressure_results = sim1.results.pressure
+    print(f'{sim1.results.positions=}')
+    time_array = sim1.results.time
+    plt.figure()
+    plt.plot(time_array, pressure_results)
+    plt.show()
+    # print(sim1.results.pressure)
+    sim1.plot_system_energy(which="all")
+    # # sim1.plot_system_energy(which="total")
+    # print("Hello World!")
 
 
 if __name__ == "__main__":
