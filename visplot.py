@@ -98,11 +98,12 @@ def animate_quiver(
     
 
 def animate_results3d(input_x, input_y, input_z, view_size=10, frame_interval=10, trailing_frames=1, frame_skip_multiplier = 1):
-        n_frames = np.shape(input_x)[0] + 1
+    n_frames = np.shape(input_x)[0] + 1
     def update_graph(num):
         num = (frame_skip_multiplier * num) % n_frames
         graph._offsets3d = (input_x[num], input_y[num], input_z[num])
         title.set_text('3D Test, time={}'.format(num))
+        return
 
 
     fig = plt.figure()
