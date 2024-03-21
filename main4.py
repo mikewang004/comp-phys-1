@@ -28,6 +28,7 @@ class Box:
         radial_distances = None,
         density=None,
         temperature=0,
+        box_length = None
     ):
         self.box_length = None
         self.density = density
@@ -42,6 +43,11 @@ class Box:
         else:
             self.n_particles = np.shape(self.positions)[0]
             self.n_dimensions = np.shape(self.positions)[1]
+        if box_length is None:
+            self.density = density
+        else:
+            self.box_length = box_length
+            self.density = 0
         return
 
 
@@ -381,32 +387,29 @@ temperature = 3
 #         [-0.09, 0.00],
 #     ]
 # )
+
+
 testbox1 = Box(
     density=density,
     temperature=temperature,
-    # particle_positions= x_0,
-    # particle_velocities= v_0
+    #particle_positions= x_0,
+    #particle_velocities= v_0
 )
 sim1 = Simulation(testbox1)
-# np.savetxt("test.csv", sim1.results.energies[:, 0, :])
 
 
 def main():
     sim1.system.generate_fcc_lattice()
     sim1.system.generate_velocities()
-    # print(f'{sim1.system.n_particles=}')
-    # print(f'{sim1.system.n_dimensions=}')
-    # print(f'{np.shape(sim1.system.velocities)=}')
-    # print('vels')
-    sim1.run_simulation(h=h, max_time=max_time, method=method)
+    #sim1.run_simulation(h=h, max_time=max_time, method=method)
     #sim1.animate_sim_results(frame_skip_multiplier=1)
-    sim1.animate_sim_results(frame_skip_multiplier=1)
+    #sim1.animate_sim_results(frame_skip_multiplier=1)
     # sim1.plot_histogram(n_bins=90)
-    sim1.plot_system_energy()
+    #sim1.plot_system_energy()
 
 
     # print(f'{np.shape(sim1.results.radial_distances) =}')
-    a = sim1.get_total_system_kin_energy()
+    #a = sim1.get_total_system_kin_energy()
     # print(f'{a=}')
     # sim1.plot_system_energy( which='all')
     print("Hello World!")
