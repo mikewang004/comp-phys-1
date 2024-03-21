@@ -304,9 +304,9 @@ class Simulation:
         plt.show()
 
 
-L = 20
-h = 0.0001
-max_time = 200 * h
+L = 3.5
+h = 0.001
+max_time = 500 * h
 method = "verlet"
 density = 10
 temperature = 100
@@ -339,7 +339,7 @@ def main():
     # print(f'{np.shape(sim1.system.velocities)=}')
     print('vels')
     sim1.run_simulation(h=h, max_time=max_time, method=method)
-    sim1.animate_sim_results(frame_skip_multiplier=1)
+    sim1.animate_sim_results(frame_skip_multiplier=10)
     # a = sim1.get_total_system_kin_energy()
     # print(f'{a=}')
     sim1.plot_system_energy( which='all')
