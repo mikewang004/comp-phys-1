@@ -34,7 +34,6 @@ class Box:
     ):
         self.box_length = box_length
         self.density = density
-        self.box_length = box_length
         self.temperature = temperature
         self.positions = particle_positions
         self.velocities = particle_velocities
@@ -172,11 +171,11 @@ class Box:
         max_cube_counter = 3
         atoms_per_unit_cell = 4
         # cell_length = 4.0 / self.density ** (1 / 3)  # 4 particles in unit cell
-        cell_length = self.box_length / 4 
+        cell_length = self.box_length / max_cube_counter # 3 
 
         self.positions = np.zeros((self.n_particles, self.n_dimensions))
         # Generate one cell
-        single_cell = np.array(
+        single_cell = -self.box_length /2 + np.array(
             [
                 [0, 0, 0],
                 [0.5 * cell_length, 0.5 * cell_length, 0],
@@ -278,6 +277,7 @@ class Simulation:
                 trailing_frames=100000,
             )
         else:
+            print("plotting projection in the xy plane")
             animate_results3d(
                 get_x_component(self.results.positions),
                 get_y_component(self.results.positions),
@@ -305,7 +305,7 @@ class Simulation:
 
 
 L = 20
-h = 0.001
+h = 0.0001
 max_time = 200 * h
 method = "verlet"
 density = 10
