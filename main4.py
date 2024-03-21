@@ -204,8 +204,6 @@ class Box:
             avg_term = avg_term + np.trace(self.radial_distances, offset=i) * np.trace(
                 self.force_magnitudes, offset=i
             )
-            print(np.diagonal(self.radial_distances, offset = i))
-            print(self.radial_distances)
         avg_term = 0.5 * avg_term
         return avg_term
 
@@ -230,18 +228,21 @@ class Simulation:
         self.system = system
         self.results = Results()
         self.stepping_function = self.system.step_forward_verlet
+        #self.pressure_interval = 10 #Change this if needed 
 
     def run_simulation(self, h=0.1, max_time=1, method="verlet"):
         self.n_dimensions = self.system.n_dimensions
         self.n_particles = self.system.n_particles
         n_steps = int(max_time / h)
+        self.pressure_interval = int(n_steps / 10)
 
         self.results.positions = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((n_steps, self.n_particles, self.n_dimensions))
         self.results.energies = np.empty(
             (n_steps, self.n_particles, 2)
         )  # 2nd axis: 0 for kin. energy 1 for pot. energy
-        self.results.pressure = np.empty((n_steps, 2))
+        self.results.rad_dau_rad = np.empty((n_steps)) #for pressure sum-i sum-ij r_ij dau U(r_ij)/dau r
+        self.results
         print(f'{np.shape(self.results.positions) =}')
         if method == "euler":
             self.stepping_function = self.system.step_forward_euler
@@ -255,11 +256,12 @@ class Simulation:
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             self.results.energies[i, :, 1] = self.system.potential_energies
-            self.results.pressure[i, 0] = self.system.get_pressure_avg_term()
+            self.results.rad_dau_rad[i] = self.system.get_pressure_avg_term()
             #if i % 50 == 0:
             #    print(i)
             #     #TODO fix self system rescale velocities
             #    self.system.rescale_velocities()
+        self.get_total_system_pressure(n_steps)
 
         # make a time array for easy plotting
         self.results.time = np.linspace(0, n_steps * h, num=n_steps)
@@ -269,6 +271,14 @@ class Simulation:
 
     def get_total_system_pot_energy(self):
         return np.nansum(self.results.energies[:, :, 1], axis=1)
+    
+    def get_total_system_pressure(self, n_steps):
+        """Computes time-average pressure."""
+        reshaped_pressure_avg_term = np.reshape(self.results.rad_dau_rad, (int(self.results.rad_dau_rad.shape[0]/ self.pressure_interval), self.pressure_interval))
+        reshaped_pressure_avg_term = np.mean(reshaped_pressure_avg_term, axis = 1)
+        self.results.pressure = self.system.temperature * self.system.density * (1 - 1/(3 * self.system.n_particles)) * reshaped_pressure_avg_term
+        return 0;
+
 
     def animate_sim_results(self, frame_skip_multiplier=1):
         if self.n_dimensions == 2:
@@ -310,7 +320,7 @@ class Simulation:
 
 L = 1
 h = 0.01
-max_time = 10 * h
+max_time = 50 * h
 method = "verlet"
 density = 0.5
 temperature = 1
