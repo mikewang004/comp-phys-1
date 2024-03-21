@@ -172,7 +172,7 @@ class Box:
         max_cube_counter = 3
         atoms_per_unit_cell = 4
         # cell_length = 4.0 / self.density ** (1 / 3)  # 4 particles in unit cell
-        cell_length = self.box_length / max_cube_counter # 3 
+        cell_length = self.box_length / 4 
 
         self.positions = np.zeros((self.n_particles, self.n_dimensions))
         # Generate one cell
@@ -278,7 +278,6 @@ class Simulation:
                 trailing_frames=100000,
             )
         else:
-            print("plotting projection in the xy plane")
             animate_results3d(
                 get_x_component(self.results.positions),
                 get_y_component(self.results.positions),
@@ -306,7 +305,7 @@ class Simulation:
 
 
 L = 20
-h = 0.1
+h = 0.001
 max_time = 200 * h
 method = "verlet"
 density = 10
