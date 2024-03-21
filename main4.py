@@ -11,8 +11,7 @@ sigma = 3.405e-10
 epsilon = 1.654e-21
 # density = 0.3; temperature = 3.0;
 # density = 0.8; temperature = 1.0;
-density = 1.2
-temperature = 1
+# density = 1.2 ; temperature = 1
 
 
 def lennard_jones_potential(r_nat):
@@ -38,7 +37,7 @@ class Box:
         self.positions = particle_positions
         self.velocities = particle_velocities
         self.positions_lookahead = None  # is this fair?
-        if particle_positions == None:
+        if particle_positions is None:
             self.n_particles = None
             self.n_dimensions = None
         else:
@@ -198,11 +197,15 @@ class Box:
 
     def get_pressure_avg_term(self):
         # First calculate average over all pairs
+        # TODO verify if this works 
         avg_term = 0
-        for i in range(1, int(self.force_magnitudes.shape[0] / 2)):
+        #for i in range(1, int(self.force_magnitudes.shape[0] / 2+1)):
+        for i in range(1, self.radial_distances.shape[1]):
             avg_term = avg_term + np.trace(self.radial_distances, offset=i) * np.trace(
                 self.force_magnitudes, offset=i
             )
+            print(np.diagonal(self.radial_distances, offset = i))
+            print(self.radial_distances)
         avg_term = 0.5 * avg_term
         return avg_term
 
@@ -253,10 +256,10 @@ class Simulation:
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             self.results.energies[i, :, 1] = self.system.potential_energies
             self.results.pressure[i, 0] = self.system.get_pressure_avg_term()
-            # if i % 500 == 0:
-            #     # print(i)
+            #if i % 50 == 0:
+            #    print(i)
             #     #TODO fix self system rescale velocities
-            #     self.system.rescale_velocities()
+            #    self.system.rescale_velocities()
 
         # make a time array for easy plotting
         self.results.time = np.linspace(0, n_steps * h, num=n_steps)
@@ -293,56 +296,59 @@ class Simulation:
         total = kin + pot
         plt.figure()
         if which == "all":
-            make_xyplot(self.results.time, kin, ylabel="kinetic energy")
-            make_xyplot(self.results.time, pot, ylabel="potential energy")
-            make_xyplot(self.results.time, total, ylabel="total")
+            make_xyplot(self.results.time, kin, plotname="kinetic energy")
+            make_xyplot(self.results.time, pot, plotname="potential energy")
+            make_xyplot(self.results.time, total, plotname="total")
         elif which == "total":
             make_xyplot(self.results.time, total, ylabel="total")
         else:
             pass
+        plt.legend()
 
         plt.show()
 
 
-L = 3.5
-h = 0.001
-max_time = 500 * h
+L = 1
+h = 0.01
+max_time = 10 * h
 method = "verlet"
-density = 10
-temperature = 100
+density = 0.5
+temperature = 1
 
-# x_0 = np.array(
-#     [[0.3 * L, 0.51 * L], [0.7 * L, 0.49 * L], [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]]
-# )
-# v_0 = np.array(
-#     [
-#         [0.09, -0.00],
-#         [-0.09, 0.00],
-#         [0.09, -0.00],
-#         [-0.09, 0.00],
-#     ]
-# )
+x_0 = np.array(
+    [[0.3 * L, 0.51 * L], [0.7 * L, 0.49 * L], [0.1 * L, 0.9 * L], [0.4 * L, 0.1 * L]]
+)
+v_0 = np.array(
+    [
+        [0.09, -0.00],
+        [-0.09, 0.00],
+        [0.09, -0.00],
+        [-0.09, 0.00],
+    ]
+)
 testbox1 = Box(
     box_length=L,
     density=density,
     temperature=temperature,
+    particle_positions= x_0,
+    particle_velocities= v_0
 )
 sim1 = Simulation(testbox1)
 # np.savetxt("test.csv", sim1.results.energies[:, 0, :])
 
 
 def main():
-    sim1.system.generate_particle_positions()
-    sim1.system.generate_velocities()
+    #sim1.system.generate_particle_positions()
+    #sim1.system.generate_velocities()
     print(f'{sim1.system.n_particles=}')
     print(f'{sim1.system.n_dimensions=}')
     # print(f'{np.shape(sim1.system.velocities)=}')
     print('vels')
     sim1.run_simulation(h=h, max_time=max_time, method=method)
-    sim1.animate_sim_results(frame_skip_multiplier=10)
+    #sim1.animate_sim_results(frame_skip_multiplier=1)
     # a = sim1.get_total_system_kin_energy()
     # print(f'{a=}')
-    sim1.plot_system_energy( which='all')
+    #sim1.plot_system_energy( which='all')
     print("Hello World!")
 
 
