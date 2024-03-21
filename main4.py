@@ -18,22 +18,21 @@ def lennard_jones_potential(r_nat):
     return 4 * (r_nat**-12 - r_nat**-6)
 
 
-
-
 class Box:
     def __init__(
         self,
         particle_positions=None,
         particle_velocities=None,
-        radial_distances = None,
+        radial_distances=None,
+        box_length=None,
         density=None,
         temperature=0,
     ):
-        self.box_length = None
+        self.box_length = box_length
         self.density = density
         self.temperature = temperature
         self.positions = particle_positions
-        self.radial_distances = radial_distances 
+        self.radial_distances = radial_distances
         self.velocities = particle_velocities
         self.positions_lookahead = None  # is this fair?
         if particle_positions is None:
@@ -43,7 +42,6 @@ class Box:
             self.n_particles = np.shape(self.positions)[0]
             self.n_dimensions = np.shape(self.positions)[1]
         return
-
 
     def step_forward_euler(self, h):
         self.positions = self.positions + h * self.velocities
@@ -61,9 +59,7 @@ class Box:
             self.get_potential_energies() * 0.5
         )  # Note imposed factor 0.5 for double counting
         # do a lookahead positions
-        self.positions = (
-            self.positions + h * self.velocities + h**2 / 2 * self.get_forces()
-        )
+        self.positions = self.positions + h * self.velocities + h**2 / 2 * self.get_forces()
         # calculate forces at new positions
         forces_lookahead = np.copy(self.get_forces())
         self.velocities = self.velocities + h / 2 * (forces_lookahead + forces_current)
@@ -88,9 +84,7 @@ class Box:
         diff_matrix_norm = norm
 
         # do the normalization
-        dim_tiled_norm = np.repeat(
-            diff_matrix_norm[np.newaxis, :, :], self.n_dimensions, axis=0
-        )
+        dim_tiled_norm = np.repeat(diff_matrix_norm[np.newaxis, :, :], self.n_dimensions, axis=0)
         diff_matrix = diff_matrix / dim_tiled_norm
 
         return diff_matrix
@@ -142,10 +136,8 @@ class Box:
     def generate_velocities(self):
         # velocities = np.zeros((self.n_particles, self.n_dimensions))
         # velocities = np.exp(-1 * np.random.normal(size = (self.n_particles, self.n_dimensions)**2 / (2 * sp.constants.Boltzmann * self.temperature)))
-        sigma = np.sqrt(1/(2*self.temperature))
-        self.velocities = np.random.normal(
-            scale=sigma, size=(self.n_particles, self.n_dimensions)
-        )
+        sigma = np.sqrt(1 / (2 * self.temperature))
+        self.velocities = np.random.normal(scale=sigma, size=(self.n_particles, self.n_dimensions))
 
         return 0
 
@@ -153,17 +145,13 @@ class Box:
         return (self.n_particles - 1) * (3 / 2) * self.temperature
 
     def rescale_velocities(self):
-        # TODO does not work as expected
         target_energy = self.get_target_energy()
-        total_kinetic_energy = self.get_total_system_kin_energy()
-        # Compare e_target to current kin en
-        # print("e_target resp total kin en as follows")
-        # print(e_target)
-        # print(total_kin_en)
+        total_kinetic_energy = self.kinetic_energies
+
         threshold = 1
-        if np.abs(total_kinetic_energy  - target_energy) > threshold:
-            labda = np.sqrt(target_energy * 2 / total_kinetic_energy )
-            print(f'rescaled velocities {labda=}')
+        if np.abs(total_kinetic_energy - target_energy) > threshold:
+            labda = np.sqrt(target_energy * 2 / total_kinetic_energy)
+            print(f"rescaled velocities {labda=}")
             self.velocities = labda * self.velocities
         return 0
 
@@ -171,19 +159,15 @@ class Box:
         """Generates fcc-unit cells. Note code assumes three dimensions."""
         self.n_dimensions = 3
         self.n_particles = 108
-        self.box_length = np.cbrt(self.n_particles/self.density)
-        print('\n box')
-        print(self.box_length)
-        print('\n')
+        self.box_length = np.cbrt(self.n_particles / self.density)
 
         max_cube_counter = 3
         atoms_per_unit_cell = 4
-        # cell_length = 4.0 / self.density ** (1 / 3)  # 4 particles in unit cell
-        cell_length = self.box_length / max_cube_counter # 3 
+        cell_length = self.box_length / max_cube_counter  # 3
 
         self.positions = np.zeros((self.n_particles, self.n_dimensions))
         # Generate one cell
-        single_cell = -self.box_length /2 + np.array(
+        single_cell = -self.box_length / 2 + np.array(
             [
                 [0, 0, 0],
                 [0.5 * cell_length, 0.5 * cell_length, 0],
@@ -197,25 +181,26 @@ class Box:
         for i in range(0, max_cube_counter):
             for j in range(0, max_cube_counter):
                 for k in range(0, max_cube_counter):
-                    self.positions[position_counter : position_counter + atoms_per_unit_cell , :] = (
-                        single_cell
-                        + np.array([k * cell_length, j * cell_length, i * cell_length])
+                    self.positions[position_counter : position_counter + atoms_per_unit_cell, :] = (
+                        single_cell + np.array([k * cell_length, j * cell_length, i * cell_length])
                     )
-                    position_counter = position_counter + atoms_per_unit_cell 
+                    position_counter = position_counter + atoms_per_unit_cell
 
         return 0
 
-    def get_pressure_avg_term(self):
-        # First calculate average over all pairs
-        # TODO verify if this works 
-        avg_term = 0
-        #for i in range(1, int(self.force_magnitudes.shape[0] / 2+1)):
-        for i in range(1, self.radial_distances.shape[1]):
-            avg_term = avg_term + np.trace(self.radial_distances, offset=i) * np.trace(
-                self.force_magnitudes, offset=i
-            )
-        avg_term = 0.5 * avg_term
-        return avg_term
+    def get_total_system_pressure(self):
+        """Computes time-average pressure. Should be placed after calculating forces to get actual info"""
+        sum_term = 1 / 2 * self.radial_distances * self.force_magnitudes
+        sum_term = np.triu(sum_term)
+        np.fill_diagonal(sum_term, 0)
+        summed_term = np.sum(sum_term)
+
+        pressure = (
+            self.temperature * self.density
+            - 1 / (3 * (self.n_particles)) * self.density * summed_term
+        )
+
+        self.pressure = pressure
 
 
 class Results(object):
@@ -230,29 +215,32 @@ def get_x_component(object):
 def get_y_component(object):
     return object[:, :, 1]
 
+
 def get_z_component(object):
     return object[:, :, 2]
+
 
 class Simulation:
     def __init__(self, system):
         self.system = system
         self.results = Results()
         self.stepping_function = self.system.step_forward_verlet
-        #self.pressure_interval = 10 #Change this if needed 
+        # self.pressure_interval = 10 #Change this if needed
 
     def run_simulation(self, h=0.1, max_time=1, method="verlet"):
         self.n_dimensions = self.system.n_dimensions
         self.n_particles = self.system.n_particles
         self.n_steps = int(max_time / h)
-        self.pressure_interval = int(self.n_steps / 10)
 
         self.results.positions = np.empty((self.n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((self.n_steps, self.n_particles, self.n_dimensions))
-        self.results.radial_distances= np.empty((self.n_steps, self.n_particles, self.n_particles))
+        self.results.radial_distances = np.empty((self.n_steps, self.n_particles, self.n_particles))
         self.results.energies = np.empty(
             (self.n_steps, self.n_particles, 2)
         )  # 2nd axis: 0 for kin. energy 1 for pot. energy
-        self.results.rad_dau_rad = np.empty((self.n_steps)) #for pressure sum-i sum-ij r_ij dau U(r_ij)/dau r
+        self.results.pressures = np.empty(
+            (self.n_steps)
+        )  # for pressure sum-i sum-ij r_ij dau U(r_ij)/dau r
         # print(f'{np.shape(self.results.positions) =}')
         if method == "euler":
             self.stepping_function = self.system.step_forward_euler
@@ -262,17 +250,19 @@ class Simulation:
         for i in tqdm(range(0, self.n_steps), desc="runnin"):
             self.stepping_function(h)
             self.system.apply_bcs()
+            self.system.get_total_system_pressure()
             self.results.positions[i, :, :] = self.system.positions
             self.results.velocities[i, :, :] = self.system.velocities
             self.results.radial_distances[i, :, :] = self.system.radial_distances
             self.results.energies[i, :, 0] = self.system.kinetic_energies
             self.results.energies[i, :, 1] = self.system.potential_energies
-            self.results.rad_dau_rad[i] = self.system.get_pressure_avg_term()
-            #if i % 50 == 0:
+            self.results.pressures[i] = self.system.pressure
+            self.system.rescale_velocities()
+
+            # if i % 50 == 0:
             #    print(i)
             #     #TODO fix self system rescale velocities
             #    self.system.rescale_velocities()
-        self.get_total_system_pressure()
 
         # make a time array for easy plotting
         self.results.time = np.linspace(0, self.n_steps * h, num=self.n_steps)
@@ -282,14 +272,6 @@ class Simulation:
 
     def get_total_system_pot_energy(self):
         return np.nansum(self.results.energies[:, :, 1], axis=1)
-    
-    def get_total_system_pressure(self):
-        """Computes time-average pressure."""
-        reshaped_pressure_avg_term = np.reshape(self.results.rad_dau_rad, (int(self.results.rad_dau_rad.shape[0]/ self.pressure_interval), self.pressure_interval))
-        reshaped_pressure_avg_term = np.mean(reshaped_pressure_avg_term, axis = 1)
-        self.results.pressure = self.system.temperature * self.system.density * (1 - 1/(3 * self.system.n_particles)) * reshaped_pressure_avg_term
-        return 0;
-
 
     def animate_sim_results(self, frame_skip_multiplier=1):
         if self.n_dimensions == 2:
@@ -328,44 +310,47 @@ class Simulation:
 
         plt.show()
 
-        
     def generate_average_histogram(self, n_bins):
         final_box_length = self.system.box_length
         volume = final_box_length**3
-        double_counting_factor = 1/2
-        n_eval_frames= 100
+        double_counting_factor = 1 / 2
+        n_eval_frames = 100
 
         radius_bins = np.linspace(0, final_box_length, num=n_bins)
         bin_radial_width = radius_bins[1] - radius_bins[0]
 
-        prefactor = double_counting_factor * 2 * volume / (4 * np.pi * self.system.n_particles * (self.system.n_particles - 1) )
+        prefactor = (
+            double_counting_factor
+            * 2
+            * volume
+            / (4 * np.pi * self.system.n_particles * (self.system.n_particles - 1))
+        )
         distance_norm = (radius_bins[0:-1] ** 2) * bin_radial_width
 
-        # make a large flat array with all the radial distances 
+        # make a large flat array with all the radial distances
         # from all steps and all particles are on one axis.
-        selected_radial_distances = self.results.radial_distances[-1 -n_eval_frames:-1, :]
+        selected_radial_distances = self.results.radial_distances[-1 - n_eval_frames : -1, :]
         flattened_radial_distances = selected_radial_distances.flatten()
 
         hist = np.histogram(flattened_radial_distances, bins=radius_bins)
         distances, frequencies = hist[1], hist[0]
-        correlation_function = prefactor * frequencies/( distance_norm * n_eval_frames)
+        correlation_function = prefactor * frequencies / (distance_norm * n_eval_frames)
         return correlation_function, distances
 
     def plot_histogram(self, n_bins=900):
-        # PAY ATTENTION. The edge alignment is only correct 
+        # PAY ATTENTION. The edge alignment is only correct
         # this way because generate_average_histogram only gives back bar boundries
         hist = self.generate_average_histogram(n_bins)
         plt.figure()
-        plt.xlabel('radial distance $\\tilde{r}$')
-        plt.ylabel('Correlation function g($\\tilde{r}$)')
+        plt.xlabel("radial distance $\\tilde{r}$")
+        plt.ylabel("Correlation function g($\\tilde{r}$)")
         plt.stairs(hist[0], hist[1])
         plt.show()
 
 
-
-# L = 3
+L = 1
 h = 0.01
-max_time = 50 * h
+max_time = 2 * h
 method = "verlet"
 density = 0.3
 temperature = 3
@@ -399,14 +384,20 @@ def main():
     # print(f'{np.shape(sim1.system.velocities)=}')
     # print('vels')
     sim1.run_simulation(h=h, max_time=max_time, method=method)
-    #sim1.animate_sim_results(frame_skip_multiplier=1)
+    # sim1.animate_sim_results(frame_skip_multiplier=1)
     sim1.animate_sim_results(frame_skip_multiplier=1)
-    # sim1.plot_histogram(n_bins=90)
-    sim1.plot_system_energy()
 
+    time = sim1.results.time
+    pressure = sim1.results.pressures
+
+    plt.figure()
+    plt.plot(time, pressure)
+    plt.show()
+    # sim1.plot_histogram(n_bins=90)
+    # sim1.plot_system_energy()
 
     # print(f'{np.shape(sim1.results.radial_distances) =}')
-    a = sim1.get_total_system_kin_energy()
+    # a = sim1.get_total_system_kin_energy()
     # print(f'{a=}')
     # sim1.plot_system_energy( which='all')
     print("Hello World!")
