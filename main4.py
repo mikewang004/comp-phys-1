@@ -236,7 +236,7 @@ class Simulation:
         self.n_dimensions = self.system.n_dimensions
         self.n_particles = self.system.n_particles
         self.n_steps = int(max_time / h)
-        self.pressure_interval = int(n_steps / 10)
+        self.pressure_interval = int(self.n_steps / 10)
 
         self.results.positions = np.empty((self.n_steps, self.n_particles, self.n_dimensions))
         self.results.velocities = np.empty((self.n_steps, self.n_particles, self.n_dimensions))
@@ -264,7 +264,7 @@ class Simulation:
             #    print(i)
             #     #TODO fix self system rescale velocities
             #    self.system.rescale_velocities()
-        self.get_total_system_pressure(n_steps)
+        self.get_total_system_pressure()
 
         # make a time array for easy plotting
         self.results.time = np.linspace(0, self.n_steps * h, num=self.n_steps)
@@ -275,7 +275,7 @@ class Simulation:
     def get_total_system_pot_energy(self):
         return np.nansum(self.results.energies[:, :, 1], axis=1)
     
-    def get_total_system_pressure(self, n_steps):
+    def get_total_system_pressure(self):
         """Computes time-average pressure."""
         reshaped_pressure_avg_term = np.reshape(self.results.rad_dau_rad, (int(self.results.rad_dau_rad.shape[0]/ self.pressure_interval), self.pressure_interval))
         reshaped_pressure_avg_term = np.mean(reshaped_pressure_avg_term, axis = 1)
