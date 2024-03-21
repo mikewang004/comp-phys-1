@@ -365,7 +365,7 @@ class Simulation:
 
 # L = 3
 h = 0.01
-max_time = 50 * h
+max_time = 5000 * h
 method = "verlet"
 density = 0.3
 temperature = 3
